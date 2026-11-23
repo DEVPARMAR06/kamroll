@@ -3,6 +3,7 @@
 //! It serves the same UI and the same API as the Python engine (see docs/engine-openapi.json), starting
 //! with settings, drives and folders, status, and the review and trip screens. Device access, copying,
 //! jobs and filing are still in the Python engine; those routes say so instead of pretending.
+mod analysis;
 mod app;
 mod config;
 mod edits;
@@ -10,6 +11,8 @@ mod filing;
 mod layout;
 mod manifest;
 mod system;
+mod tagging;
+mod trips;
 mod verify;
 
 use clap::{Parser, Subcommand};

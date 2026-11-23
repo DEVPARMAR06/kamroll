@@ -1,6 +1,6 @@
 //! The HTTP API. Same routes, shapes and guards as the Python engine; parts not ported yet answer plainly.
 
-use crate::{config, edits, filing, layout, manifest, system, verify};
+use crate::{analysis, config, edits, filing, layout, manifest, system, verify};
 use axum::{
     extract::{Query, Request, State},
     http::{header, HeaderValue, StatusCode},
@@ -21,6 +21,7 @@ pub struct AppState {
     pub token: String,
     pub health: verify::Shared,
     pub org: filing::SharedOrg,
+    pub analysis: analysis::Shared,
 }
 type St = State<Arc<AppState>>;
 type Q = Query<HashMap<String, String>>;
@@ -425,8 +426,19 @@ async fn ollama() -> Json<Value> {
 async fn idle_job() -> Json<Value> {
     Json(json!({"state": "idle", "message": "", "version": 0}))
 }
-async fn idle_analysis() -> Json<Value> {
-    Json(json!({"state": "idle", "done": 0, "total": 0, "message": "", "summary": null, "error": null}))
+async fn analysis_state(State(st): St) -> Json<Value> {
+    Json(st.analysis.lock().unwrap().snapshot())
+}
+async fn analysis_start(State(st): St) -> Response {
+    let cfg = match need_cfg() { Ok(c) => c, Err(r) => return r };
+    if st.analysis.lock().unwrap().active() {
+        return detail(409, "Already analysing.");
+    }
+    if !cfg.manifest_path().exists() {
+        return detail(400, "There is nothing backed up yet.");
+    }
+    analysis::spawn(st.analysis.clone(), cfg);
+    Json(st.analysis.lock().unwrap().snapshot()).into_response()
 }
 async fn idle_ai() -> Json<Value> {
     Json(json!({"job": {"state": "idle", "kind": null, "done": 0, "total": 0, "message": "", "error": null, "skipped": 0},
@@ -470,7 +482,7 @@ async fn index(State(st): St) -> Response {
 }
 
 pub fn router(token: String) -> Router {
-    let state = Arc::new(AppState { token, health: Default::default(), org: Default::default() });
+    let state = Arc::new(AppState { token, health: Default::default(), org: Default::default(), analysis: Default::default() });
     Router::new()
         .route("/", get(index))
         .route("/static/{*path}", get(static_file))
@@ -488,7 +500,8 @@ pub fn router(token: String) -> Router {
         .route("/api/ollama", get(ollama))
         .route("/api/backup", get(idle_job))
         .route("/api/backup/events", get(no_content))
-        .route("/api/analysis", get(idle_analysis))
+        .route("/api/analysis", get(analysis_state))
+        .route("/api/analysis/start", post(analysis_start))
         .route("/api/ai", get(idle_ai))
         .route("/api/review/tag", post(set_tag))
         .route("/api/trips", post(create_trip))

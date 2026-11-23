@@ -32,7 +32,7 @@ pub fn open_rw(cfg: &Config) -> Option<Connection> {
 }
 
 fn json_list(items: &[&str]) -> String {
-    serde_json::to_string(items).unwrap_or_else(|_| "[]".into())
+    crate::tagging::json_list(items)
 }
 
 pub fn recount_trips(db: &Connection) -> rusqlite::Result<()> {

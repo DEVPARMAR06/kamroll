@@ -208,3 +208,39 @@ def test_python_and_rust_make_the_same_changes(vault):  # noqa: F811
         assert a == b, (a[:2], a[2], b[2])
     for table in py_state:
         assert py_state[table] == rs_state[table], table
+
+
+def analysis_state(cfg):
+    con = sqlite3.connect(cfg.backup_root / ".photovault" / "manifest.db")
+    out = {
+        "tags": sorted(con.execute("SELECT key, tag, conf, reasons, user_tag, trip_id FROM tags").fetchall()),
+        "trips": sorted(con.execute("SELECT id, name, auto_name, start, end, days, items, ROUND(max_km, 6), ROUND(lat, 6), ROUND(lon, 6), places FROM trips").fetchall()),
+        "facts": sorted(con.execute("SELECT key, width, height, make, model, software, luma < 8 FROM facts").fetchall()),
+        "home": [round(x, 6) for x in json.loads(con.execute("SELECT v FROM meta WHERE k='home'").fetchone()[0])],
+    }
+    con.close()
+    return out
+
+
+def test_python_and_rust_analyse_the_same_way(vault):  # noqa: F811
+    cfg, keys = vault
+    cfg_path = os.environ["PHOTOVAULT_CONFIG"]
+    pristine = cfg.backup_root.parent / "pristine"
+    shutil.copytree(cfg.backup_root, pristine)
+    with PyApi() as py:
+        py.call("POST", "/api/analysis/start")
+        wait(py, "/api/analysis")
+        py_summary = py.call("GET", "/api/analysis")[1]
+    py_state = analysis_state(cfg)
+    shutil.rmtree(cfg.backup_root)
+    shutil.copytree(pristine, cfg.backup_root)
+    with RsApi(cfg_path) as rs:
+        assert rs.call("POST", "/api/analysis/start")[0] == 200
+        wait(rs, "/api/analysis")
+        rs_summary = rs.call("GET", "/api/analysis")[1]
+        assert rs.call("POST", "/api/analysis/start")[0] in (200, 409)
+    assert rs_summary["state"] == "done", rs_summary
+    assert rs_summary["summary"] == py_summary["summary"]
+    rs_state = analysis_state(cfg)
+    for table in py_state:
+        assert py_state[table] == rs_state[table], table
