@@ -77,8 +77,9 @@ function sameRoot(a, b) { const n = (x) => (x || "").replace(/[\\/]+$/, "").toLo
 function volumeFor(root) { return S.volumes.find((v) => sameRoot(v.path, root)); }
 
 /* ---------- shell ---------- */
+const NAV_GROUPS = { setup: "Backup", review: "Library", health: "Maintenance" };
 function renderNav() {
-  $("#nav").innerHTML = Object.entries(PAGES).map(([id, p]) => `
+  $("#nav").innerHTML = Object.entries(PAGES).map(([id, p]) => `${NAV_GROUPS[id] ? `<div class="nav-group">${NAV_GROUPS[id]}</div>` : ""}
     <button class="nav-item" data-nav="${id}" ${id === S.page ? 'aria-current="page"' : ""}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p.icon}</svg>
       <span>${p.label}</span>${p.soon ? '<span class="soon">Soon</span>' : ""}${id === "backup" ? '<span class="live" id="navLive" hidden></span>' : ""}
