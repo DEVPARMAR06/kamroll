@@ -202,3 +202,78 @@ pub fn last(db: Option<&Connection>) -> Value {
     }
     out
 }
+
+/// Compare a fresh phone listing with the manifest and with what is actually on the SSD.
+pub fn sync_report(device: &mut dyn crate::device::Device, db: &Connection, cfg: &crate::config::Config, on_progress: &dyn Fn(i64)) -> Result<Value, String> {
+    let (mut on_phone, mut backed_up, mut skipped) = (0i64, 0i64, 0i64);
+    let (mut waiting, mut adopted): (Vec<String>, Vec<String>) = (vec![], vec![]);
+    let mut phone_keys = std::collections::HashSet::new();
+    device.list_files(&cfg.remote_roots, &cfg.ignore, &mut |rf| {
+        on_phone += 1;
+        if on_phone % 500 == 0 {
+            on_progress(on_phone);
+        }
+        let key = crate::copier::make_key(rf.name(), rf.size, rf.created);
+        let status: Option<String> = db.query_row("SELECT status FROM items WHERE key=?", [&key], |r| r.get(0)).ok();
+        match status.as_deref() {
+            None | Some("pending") | Some("copying") | Some("failed") => waiting.push(rf.path.clone()),
+            Some("skipped") => skipped += 1,
+            Some("adopted") => adopted.push(rf.path.clone()),
+            _ => backed_up += 1,
+        }
+        phone_keys.insert(key);
+        true
+    })?;
+    let done_keys: Vec<String> = db
+        .prepare("SELECT key FROM items WHERE status='done' AND key NOT LIKE 'legacy|%'")
+        .and_then(|mut s| s.query_map([], |r| r.get(0)).map(|it| it.flatten().collect()))
+        .unwrap_or_default();
+    let only_on_ssd = done_keys.iter().filter(|k| !phone_keys.contains(*k)).count();
+    let rep = verify_ssd(db, &cfg.backup_root(), false, &|_, _| {}, &|| false).unwrap_or_default();
+    let in_sync = waiting.is_empty() && adopted.is_empty() && rep.ok();
+    Ok(json!({
+        "on_phone": on_phone, "backed_up": backed_up, "waiting": waiting.len(),
+        "waiting_sample": waiting.iter().take(25).collect::<Vec<_>>(), "adopted_not_copied": adopted.len(),
+        "only_on_ssd": only_on_ssd, "skipped": skipped, "checked": rep.checked, "missing": rep.missing,
+        "wrong_size": rep.wrong_size, "corrupt": rep.corrupt, "ok": rep.ok(), "in_sync": in_sync,
+    }))
+}
+
+/// Run the phone-vs-SSD comparison on a worker thread.
+pub fn spawn_sync(job: Shared, cfg: crate::config::Config) {
+    {
+        let mut j = job.lock().unwrap();
+        *j = HealthJob { state: "running".into(), kind: Some("sync".into()), message: "Starting…".into(), started_at: Some(now()), ..Default::default() };
+    }
+    std::thread::spawn(move || {
+        let result = (|| -> Result<(), String> {
+            job.lock().unwrap().message = "Connecting to the iPhone…".into();
+            let mut dev = crate::device::make_device();
+            dev.reconnect().map_err(|e| crate::device::explain_device_error(&e).1)?;
+            job.lock().unwrap().message = "Comparing the iPhone with the SSD…".into();
+            let db = Connection::open(cfg.manifest_path()).map_err(|e| e.to_string())?;
+            let j2 = job.clone();
+            let mut payload = sync_report(dev.as_mut(), &db, &cfg, &move |n| {
+                if let Ok(mut j) = j2.lock() {
+                    j.done = n;
+                }
+            })?;
+            payload["kind"] = json!("sync");
+            payload["at"] = json!(now());
+            db.execute("INSERT OR REPLACE INTO meta VALUES(?, ?)", params!["health_sync", payload.to_string()]).map_err(|e| e.to_string())?;
+            Ok(())
+        })();
+        let mut j = job.lock().unwrap();
+        match result {
+            Ok(()) => {
+                j.state = "done".into();
+                j.message = "Finished".into();
+            }
+            Err(e) => {
+                j.state = "error".into();
+                j.error = Some(e);
+                j.message = "Stopped by an error".into();
+            }
+        }
+    });
+}

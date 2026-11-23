@@ -195,7 +195,6 @@ def test_both_engines_write_the_same_settings_file(vault, tmp_path):  # noqa: F8
 
 def test_parts_not_ported_say_so(engines):
     py, rs, *_ = engines
-    r = requests.post(rs.url("/api/backup/start"), json={}, headers={"x-photovault-token": TOKEN}, timeout=5)
+    r = requests.post(rs.url("/api/ai/start"), json={"kind": "trips"}, headers={"x-photovault-token": TOKEN}, timeout=5)
     assert r.status_code == 501 and "not been ported" in r.json()["detail"]
-    assert rs.get("/api/device").json()["connected"] is False
-    assert rs.get("/api/backup/events").status_code == 204
+    assert rs.get("/api/ollama").json()["reachable"] is False

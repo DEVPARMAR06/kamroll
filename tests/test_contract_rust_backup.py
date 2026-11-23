@@ -213,3 +213,37 @@ def test_a_stopped_backup_resumes_without_recopying(setup):
     rows, files = snapshot(cfg)
     assert sum(1 for r in rows if r[3] == "done") == 10
     assert hashlib.sha256(big.read_bytes()).hexdigest() in files.values()
+
+
+def test_phone_versus_ssd_comparison_matches(setup):
+    cfg, phone, cfg_path, monkeypatch = setup
+    with TestClient(create_app(TOKEN, device_factory=lambda: DirFake(phone)), headers=H) as py:
+        py.post("/api/backup/start", json={})
+        settle(lambda: py.get("/api/backup").json())
+        (phone / "DCIM" / "100APPLE" / "NEW_0009.JPG").write_bytes(exif_jpeg("cyan", "2025:07:01 10:00:00", size=(60, 44)))
+        (phone / "DCIM" / "100APPLE" / "IMG_0002.JPG").unlink()                       # deleted from the phone after backup
+        (cfg.backup_root / "2025" / "2025-06").mkdir(parents=True, exist_ok=True)
+        victim = next(p for p in cfg.backup_root.rglob("IMG_0005.MOV"))
+        victim.write_bytes(b"short")                                                    # damaged on the SSD
+
+        def run(get, post):
+            assert post("/api/health/start", {"kind": "sync"}).status_code == 200
+            for _ in range(400):
+                if get("/api/health/state").json()["job"]["state"] != "running":
+                    break
+                time.sleep(0.05)
+            st = get("/api/health/state").json()
+            assert st["job"]["state"] == "done", st
+            r = dict(st["last"]["sync"])
+            r.pop("at")
+            return r
+
+        py_result = run(lambda p: py.get(p), lambda p, b: py.post(p, json=b))
+    monkeypatch.setenv("PHOTOVAULT_FAKE_DEVICE", str(phone))
+    rs = RustEngine(cfg_path)
+    try:
+        rs_result = run(lambda p: requests.get(rs.url(p), headers=H, timeout=10), lambda p, b: requests.post(rs.url(p), json=b, headers=H, timeout=10))
+    finally:
+        rs.close()
+    assert py_result["waiting"] == 1 and py_result["only_on_ssd"] == 1 and py_result["wrong_size"]
+    assert rs_result == py_result

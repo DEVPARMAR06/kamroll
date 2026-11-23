@@ -351,8 +351,7 @@ async fn health_state(State(st): St) -> Response {
 async fn health_start(State(st): St, Json(body): Json<Value>) -> Response {
     let cfg = match need_cfg() { Ok(c) => c, Err(r) => return r };
     match body.get("kind").and_then(|v| v.as_str()) {
-        Some("deep") => {}
-        Some("sync") => return detail(501, NOT_PORTED),
+        Some("deep") | Some("sync") => {}
         _ => return bad(&["body", "kind"], "Input should be 'sync' or 'deep'", "literal_error"),
     }
     if st.health.lock().unwrap().active() {
@@ -364,7 +363,11 @@ async fn health_start(State(st): St, Json(body): Json<Value>) -> Response {
     if !cfg.manifest_path().exists() {
         return detail(400, "There is nothing backed up yet.");
     }
-    verify::spawn_deep(st.health.clone(), cfg.manifest_path(), cfg.backup_root());
+    if body.get("kind").and_then(|v| v.as_str()) == Some("sync") {
+        verify::spawn_sync(st.health.clone(), cfg);
+    } else {
+        verify::spawn_deep(st.health.clone(), cfg.manifest_path(), cfg.backup_root());
+    }
     Json(st.health.lock().unwrap().snapshot()).into_response()
 }
 
