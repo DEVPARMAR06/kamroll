@@ -1,0 +1,26 @@
+[package]
+name = "photovault-engine"
+version = "0.1.0"
+edition = "2021"
+description = "Rust engine for iPhone Photo Vault. Serves the same API and UI as the Python engine, one route at a time."
+
+[dependencies]
+anyhow = "1"
+axum = "0.8"
+clap = { version = "4", features = ["derive"] }
+include_dir = "0.7"
+rusqlite = { version = "0.32", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+sysinfo = "0.33"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time"] }
+toml = "0.8"
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true

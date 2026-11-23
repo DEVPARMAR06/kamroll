@@ -13,3 +13,4 @@ desktop/engine-dist/
 desktop/engine-build/
 docs/reports/
 spike_afc.py
+engine-rs/target/

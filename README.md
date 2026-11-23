@@ -36,12 +36,12 @@ npm run dev                        # opens the app in its own window
 The window starts the Python engine, waits for it, and stops it on exit. To make an installer that needs no Python, bundle the engine first, then build:
 
 ```powershell
-pyinstaller --noconfirm --onedir --name photovault-engine --distpath desktop/engine-dist `
+pyinstaller --noconfirm --onedir --noconsole --name photovault-engine --distpath desktop/engine-dist `
   --add-data "src/photovault/ui;photovault/ui" --paths src `
   --collect-all pymobiledevice3 --collect-all geonamescache --collect-all pillow_heif --collect-all av `
   --collect-submodules uvicorn --collect-submodules fastapi --collect-submodules starlette --collect-submodules photovault `
   desktop/engine_entry.py
-cd desktop; npm run build
+cd desktop; npm run build:win     # or build:mac on a Mac
 ```
 
 Building needs Rust (current stable) and, on Windows, the Visual Studio C++ build tools with the Windows SDK. See `.github/workflows/desktop.yml` for the Windows and macOS build.
@@ -56,6 +56,20 @@ UI (HTML/JS)  ──  JSON and server-sent events on 127.0.0.1  ──  Engine (
 - **The manifest** is a SQLite file stored on the SSD (`<backup>/.photovault/manifest.db`), so the SSD is the source of truth and moves between machines.
 - **The UI** (`src/photovault/ui`) talks only to the engine API. The API is exported as OpenAPI in `docs/engine-openapi.json`, so the engine can be reimplemented (for example in Rust) without touching the UI.
 - **The desktop shell** (`desktop/`, Tauri) hosts the UI in a native window.
+
+## The Rust engine
+
+`engine-rs/` is a Rust engine that serves the same UI and the same API, taken over one route at a time. Because the UI only talks to the API, either engine can run behind it.
+
+```powershell
+cd engine-rs
+cargo build
+target\debug\photovault-engine ui --port 8765      # same flags as `photovault ui`
+```
+
+**Ported so far (and proven identical):** settings (read, validate and write the same `config.toml`), drives and folders, backup-location checks, folder-layout previews, status, and the Review and Trips screens (tags, search, trips). `tests/test_contract_rust.py` starts both engines on the same data and compares their answers, including the error messages and the written settings file.
+
+**Not ported yet:** iPhone access, the copier, the background jobs (backup, health, analysis, filing, smart tags), thumbnails for HEIC and video, and every edit (confirming tags, editing trips). Those routes answer `501 not ported`, and the idle screens load normally. To run the desktop app on the Rust engine, set `PHOTOVAULT_ENGINE` to the built program.
 
 ## Safety notes
 
@@ -73,7 +87,7 @@ The suite uses a fake iPhone and a fake Ollama, so it needs no hardware.
 
 ## Status
 
-Working: backup, resume, verify, trips, tags, filing, the web UI and the Windows desktop window. Not yet: the engine bundled into a release installer, a macOS build that has been run on a Mac, vision-model tagging tested against a real model, and a Rust engine.
+Working: backup, resume, verify, trips, tags, filing, the web UI and the Windows desktop window. Not yet: a macOS build that has been run on a Mac, vision-model tagging tested against a real model, and the rest of the Rust engine (see below).
 
 ## Licence
 

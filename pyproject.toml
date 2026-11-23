@@ -11,7 +11,7 @@ license = { text = "MIT" }
 dependencies = ["pymobiledevice3>=4", "Pillow", "pillow-heif", "fastapi", "uvicorn", "psutil", "av", "geonamescache"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "pytest-asyncio>=0.23", "httpx"]
+dev = ["pytest>=8", "pytest-asyncio>=0.23", "httpx", "requests"]
 
 [project.scripts]
 photovault = "photovault.cli:main"

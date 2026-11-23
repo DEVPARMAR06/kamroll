@@ -4,7 +4,7 @@
 // port with a random access token, open a window on it once it answers, and stop the engine when
 // the window closes. All the app logic stays in the engine, so the same window will later host a
 // Rust engine without any change to the page.
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#![cfg_attr(windows, windows_subsystem = "windows")]
 
 use std::collections::hash_map::RandomState;
 use std::hash::{BuildHasher, Hasher};
