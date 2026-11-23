@@ -1,0 +1,25 @@
+# Copy to config.toml and edit. Everything here is optional except ssd_root.
+
+[paths]
+# Where the SSD is mounted. Windows: "E:/"   macOS: "/Volumes/MySSD"
+ssd_root = "E:/"
+# Folder created on the SSD for the backup (name is yours to choose).
+# May also be an absolute path.
+backup_dir = "PhotoBackup"
+
+[device]
+# Folders read from the iPhone (read-only). Add "/PhotoData" later for edit originals.
+remote_roots = ["/DCIM"]
+
+[copy]
+# Where each file lands, relative to backup_dir. Keys: year month day name stem ext
+layout = "{year}/{year}-{month}/{name}"
+chunk_mb = 4
+max_retries = 6
+# Names skipped on the phone and ignored when adopting an existing backup.
+ignore = ["._*", ".DS_Store", ".MISC", "Thumbs.db"]
+# Refuse to start unless free space exceeds pending bytes by this margin.
+free_space_margin_gb = 5
+# When an old backup holds a re-encoded or slow-mo export of a phone video (found with
+# `photovault compare-old`), also back up the phone's original. Set false to skip those originals.
+copy_originals_of_reencoded = true

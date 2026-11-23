@@ -1,0 +1,7 @@
+{
+  "bundle": {
+    "resources": {
+      "../engine-dist/photovault-engine": "engine"
+    }
+  }
+}

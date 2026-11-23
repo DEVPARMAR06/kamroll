@@ -1,0 +1,10 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "The main window may use the native folder picker and drag the window by its title strip. The app page is served by the local engine on 127.0.0.1.",
+  "windows": ["main"],
+  "remote": {
+    "urls": ["http://127.0.0.1:*"]
+  },
+  "permissions": ["core:default", "core:window:allow-start-dragging", "dialog:allow-open"]
+}
