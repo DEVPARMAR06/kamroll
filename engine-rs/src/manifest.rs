@@ -4,7 +4,6 @@ use crate::config::Config;
 use rusqlite::{params_from_iter, types::Value as Sql, Connection, OpenFlags};
 use serde_json::{json, Map, Value};
 
-const PREVIEWABLE: [&str; 3] = ["jpg", "jpeg", "png"];   // what this engine can draw a thumbnail for
 const VIDEO: [&str; 3] = ["mov", "mp4", "m4v"];
 
 pub fn open_ro(cfg: &Config) -> Option<Connection> {
@@ -131,7 +130,7 @@ pub fn review_items(cfg: &Config, q: &ItemQuery) -> Value {
             json!({
                 "key": key, "name": name, "size": size, "taken": taken,
                 "kind": if VIDEO.contains(&e.as_str()) { "video" } else { "photo" },
-                "has_thumb": PREVIEWABLE.contains(&e.as_str()),
+                "has_thumb": crate::thumbs::can_preview(e.as_str()),
                 "tag": user_tag.clone().unwrap_or_else(|| tag.clone()), "suggested": tag, "conf": conf,
                 "confirmed": user_tag.is_some(), "reasons": serde_json::from_str::<Value>(&reasons).unwrap_or(json!([])),
                 "trip_id": trip_id, "gps": lat.is_some(), "ai": ai
@@ -163,7 +162,7 @@ pub fn trips(cfg: &Config) -> Value {
             .ok()
             .map(|mut s| {
                 s.query_map([&id], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))
-                    .map(|it| it.flatten().filter(|(_, n)| PREVIEWABLE.contains(&ext(n).as_str())).map(|(k, _)| k).collect())
+                    .map(|it| it.flatten().filter(|(_, n)| crate::thumbs::can_preview(ext(n).as_str())).map(|(k, _)| k).collect())
                     .unwrap_or_default()
             })
             .unwrap_or_default();

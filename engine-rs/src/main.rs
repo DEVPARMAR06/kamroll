@@ -3,15 +3,22 @@
 //! It serves the same UI and the same API as the Python engine (see docs/engine-openapi.json), starting
 //! with settings, drives and folders, status, and the review and trip screens. Device access, copying,
 //! jobs and filing are still in the Python engine; those routes say so instead of pretending.
+mod afc;
 mod analysis;
 mod app;
+mod backup;
 mod config;
+mod copier;
+mod device;
 mod edits;
 mod filing;
 mod layout;
 mod manifest;
+mod metadata;
+mod schema;
 mod system;
 mod tagging;
+mod thumbs;
 mod trips;
 mod verify;
 

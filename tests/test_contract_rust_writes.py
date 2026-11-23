@@ -244,3 +244,26 @@ def test_python_and_rust_analyse_the_same_way(vault):  # noqa: F811
     rs_state = analysis_state(cfg)
     for table in py_state:
         assert py_state[table] == rs_state[table], table
+
+
+def test_thumbnails_match_in_size_and_errors(vault):  # noqa: F811
+    import io
+
+    from PIL import Image
+
+    cfg, keys = vault
+    with PyApi() as py, RsApi(os.environ["PHOTOVAULT_CONFIG"]) as rs:
+        def get(api, path):
+            if isinstance(api, PyApi):
+                r = api.c.get(path)
+            else:
+                r = requests.get(api.e.url(path), headers=H, timeout=20)
+            return r
+
+        for k in ("cam", "wa", "t1"):
+            a, b = get(py, f"/api/thumb?key={keys[k]}&size=96"), get(rs, f"/api/thumb?key={keys[k]}&size=96")
+            assert a.status_code == b.status_code == 200 and b.headers["content-type"] == "image/jpeg"
+            assert Image.open(io.BytesIO(a.content)).size == Image.open(io.BytesIO(b.content)).size
+        for path in ("/api/thumb?key=nope", f"/api/thumb?key={keys['mov']}", f"/api/thumb?key={keys['aae']}"):
+            a, b = get(py, path), get(rs, path)
+            assert (a.status_code, a.json()) == (b.status_code, b.json()), path

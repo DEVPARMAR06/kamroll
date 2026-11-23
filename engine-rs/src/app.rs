@@ -1,6 +1,6 @@
 //! The HTTP API. Same routes, shapes and guards as the Python engine; parts not ported yet answer plainly.
 
-use crate::{analysis, config, edits, filing, layout, manifest, system, verify};
+use crate::{analysis, backup, config, copier, device, edits, filing, layout, manifest, system, verify};
 use axum::{
     extract::{Query, Request, State},
     http::{header, HeaderValue, StatusCode},
@@ -22,6 +22,7 @@ pub struct AppState {
     pub health: verify::Shared,
     pub org: filing::SharedOrg,
     pub analysis: analysis::Shared,
+    pub backup: backup::Manager,
 }
 type St = State<Arc<AppState>>;
 type Q = Query<HashMap<String, String>>;
@@ -190,6 +191,32 @@ async fn trips() -> Response {
     }
 }
 
+async fn thumb(Query(q): Q) -> Response {
+    let cfg = match need_cfg() { Ok(c) => c, Err(r) => return r };
+    let Some(key) = q.get("key") else { return missing("key") };
+    let size = q.get("size").and_then(|s| s.parse::<i64>().ok()).unwrap_or(320).clamp(64, 1280) as u32;
+    let dest: Option<String> = manifest::open_ro(&cfg).and_then(|c| c.query_row("SELECT dest FROM items WHERE key=?", [key], |r| r.get::<_, Option<String>>(0)).ok().flatten());
+    let Some(dest) = dest.filter(|d| !d.is_empty()) else { return detail(404, "Unknown file") };
+    let root = cfg.backup_root();
+    let src = root.join(&dest);
+    let inside = match (src.canonicalize(), root.canonicalize()) { (Ok(s), Ok(r)) => s.starts_with(&r) && s.is_file(), _ => false };
+    if !inside {
+        return detail(404, "File not found");
+    }
+    let cache = crate::thumbs::cache_path(&root, key, size);
+    if !cache.exists() {
+        let s2 = src.clone();
+        let data = tokio::task::spawn_blocking(move || crate::thumbs::make_thumbnail(&s2, size)).await.ok().flatten();
+        let Some(data) = data else { return detail(404, "No preview") };
+        if let Some(p) = cache.parent() { let _ = std::fs::create_dir_all(p); }
+        let _ = std::fs::write(&cache, &data);
+    }
+    match std::fs::read(&cache) {
+        Ok(bytes) => ([(header::CONTENT_TYPE, "image/jpeg"), (header::CACHE_CONTROL, "private, max-age=86400")], bytes).into_response(),
+        Err(_) => detail(404, "No preview"),
+    }
+}
+
 // ---- edits: tags and trips ----
 
 fn bad(loc: &[&str], msg: &str, typ: &str) -> Response {
@@ -331,6 +358,9 @@ async fn health_start(State(st): St, Json(body): Json<Value>) -> Response {
     if st.health.lock().unwrap().active() {
         return detail(409, "A check is already running.");
     }
+    if st.backup.active() || st.org.lock().unwrap().active() {
+        return detail(409, "A backup is running. Wait for it to finish first.");
+    }
     if !cfg.manifest_path().exists() {
         return detail(400, "There is nothing backed up yet.");
     }
@@ -395,7 +425,7 @@ async fn org_start(State(st): St) -> Response {
     if st.org.lock().unwrap().active() {
         return detail(409, "Filing is already running.");
     }
-    if st.health.lock().unwrap().active() {
+    if st.health.lock().unwrap().active() || st.backup.active() {
         return detail(409, "A backup or check is running. Wait for it to finish first.");
     }
     if !cfg.manifest_path().exists() {
@@ -417,14 +447,89 @@ async fn org_cancel(State(st): St) -> Response {
 // ---- pieces that are not ported: honest idle answers so the UI still loads, and 501 for anything that would act ----
 
 async fn device() -> Json<Value> {
-    Json(json!({"connected": false, "name": null, "model": null, "ios": null, "error": "not_ported",
-                "hint": "The Rust engine does not talk to the iPhone yet. Use the Python engine for backups."}))
+    let r = tokio::task::spawn_blocking(|| device::make_device().info()).await.unwrap_or_else(|_| Err("timeout".into()));
+    Json(match r {
+        Ok(i) => json!({"connected": true, "name": i.name, "model": i.model, "ios": i.ios, "error": null, "hint": null}),
+        Err(e) => {
+            let (code, hint) = device::explain_device_error(&e);
+            json!({"connected": false, "name": null, "model": null, "ios": null, "error": code, "hint": hint})
+        }
+    })
 }
 async fn ollama() -> Json<Value> {
     Json(json!({"reachable": false, "models": [], "error": "Smart tags are not available in the Rust engine yet."}))
 }
-async fn idle_job() -> Json<Value> {
-    Json(json!({"state": "idle", "message": "", "version": 0}))
+async fn backup_state(State(st): St) -> Json<Value> {
+    Json(st.backup.snapshot())
+}
+
+async fn backup_start(State(st): St, body: Option<Json<Value>>) -> Response {
+    let body = body.map(|b| b.0).unwrap_or(json!({}));
+    let limit = match body.get("limit") {
+        None | Some(Value::Null) => None,
+        Some(v) => match v.as_i64() {
+            Some(n) if (1..=1_000_000).contains(&n) => Some(n as usize),
+            _ => return bad(&["body", "limit"], "Input should be a valid integer", "int_parsing"),
+        },
+    };
+    let only = body.get("only_reencoded_originals").and_then(|v| v.as_bool()).unwrap_or(false);
+    if st.backup.active() {
+        return detail(409, "A backup is already running.");
+    }
+    if st.org.lock().unwrap().active() {
+        return detail(409, "Files are being filed into trip folders. Wait for that to finish first.");
+    }
+    let Some(path) = config::find_config() else { return detail(400, "Save your settings first.") };
+    let Ok(cfg) = config::load(&path) else { return detail(400, "Save your settings first.") };
+    let job = backup::BackupJob::new();
+    *st.backup.job.lock().unwrap() = Some(job.clone());
+    job.run(cfg, copier::RunOptions { limit, only_reencoded: only });
+    Json(st.backup.snapshot()).into_response()
+}
+
+fn need_job(st: &AppState, states: &[&str]) -> Result<std::sync::Arc<backup::BackupJob>, Response> {
+    match st.backup.current() {
+        Some(j) if states.contains(&j.state().as_str()) => Ok(j),
+        _ => Err(detail(409, "That is not possible in the current state.")),
+    }
+}
+
+async fn backup_pause(State(st): St) -> Response {
+    match need_job(&st, &["scanning", "copying"]) { Ok(j) => { j.pause(); Json(st.backup.snapshot()).into_response() } Err(r) => r }
+}
+async fn backup_resume(State(st): St) -> Response {
+    match need_job(&st, &["paused"]) { Ok(j) => { j.resume(); Json(st.backup.snapshot()).into_response() } Err(r) => r }
+}
+async fn backup_cancel(State(st): St) -> Response {
+    match need_job(&st, &["starting", "scanning", "copying", "paused"]) { Ok(j) => { j.cancel(); Json(st.backup.snapshot()).into_response() } Err(r) => r }
+}
+
+/// Server-sent events: a full snapshot whenever something changes, and at least once a second.
+async fn backup_events(State(st): St) -> Response {
+    let (tx, rx) = tokio::sync::mpsc::channel::<Result<axum::body::Bytes, std::convert::Infallible>>(8);
+    let st2 = st.clone();
+    tokio::spawn(async move {
+        let (mut last, mut idle) = (u64::MAX, 0.0f64);
+        loop {
+            let snap = st2.backup.snapshot();
+            let ver = snap.get("version").and_then(|v| v.as_u64()).unwrap_or(0);
+            if ver != last || idle >= 1.0 {
+                last = ver;
+                idle = 0.0;
+                if tx.send(Ok(axum::body::Bytes::from(format!("data: {}
+
+", snap)))).await.is_err() {
+                    return;
+                }
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+            idle += 0.2;
+        }
+    });
+    let mut r = Response::new(axum::body::Body::from_stream(tokio_stream::wrappers::ReceiverStream::new(rx)));
+    r.headers_mut().insert(header::CONTENT_TYPE, HeaderValue::from_static("text/event-stream"));
+    r.headers_mut().insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+    r
 }
 async fn analysis_state(State(st): St) -> Json<Value> {
     Json(st.analysis.lock().unwrap().snapshot())
@@ -443,9 +548,6 @@ async fn analysis_start(State(st): St) -> Response {
 async fn idle_ai() -> Json<Value> {
     Json(json!({"job": {"state": "idle", "kind": null, "done": 0, "total": 0, "message": "", "error": null, "skipped": 0},
                 "enabled": false, "model": "", "ready": false, "done": {"photos": 0, "trips": 0}}))
-}
-async fn no_content() -> StatusCode {
-    StatusCode::NO_CONTENT   // an event stream that ends: the page stops reconnecting
 }
 async fn fallback(req: Request) -> Response {
     if req.uri().path().starts_with("/api") {
@@ -482,7 +584,7 @@ async fn index(State(st): St) -> Response {
 }
 
 pub fn router(token: String) -> Router {
-    let state = Arc::new(AppState { token, health: Default::default(), org: Default::default(), analysis: Default::default() });
+    let state = Arc::new(AppState { token, health: Default::default(), org: Default::default(), analysis: Default::default(), backup: Default::default() });
     Router::new()
         .route("/", get(index))
         .route("/static/{*path}", get(static_file))
@@ -498,11 +600,16 @@ pub fn router(token: String) -> Router {
         .route("/api/trips", get(trips))
         .route("/api/device", get(device))
         .route("/api/ollama", get(ollama))
-        .route("/api/backup", get(idle_job))
-        .route("/api/backup/events", get(no_content))
+        .route("/api/backup", get(backup_state))
+        .route("/api/backup/start", post(backup_start))
+        .route("/api/backup/pause", post(backup_pause))
+        .route("/api/backup/resume", post(backup_resume))
+        .route("/api/backup/cancel", post(backup_cancel))
+        .route("/api/backup/events", get(backup_events))
         .route("/api/analysis", get(analysis_state))
         .route("/api/analysis/start", post(analysis_start))
         .route("/api/ai", get(idle_ai))
+        .route("/api/thumb", get(thumb))
         .route("/api/review/tag", post(set_tag))
         .route("/api/trips", post(create_trip))
         .route("/api/trips/{id}", axum::routing::put(rename_trip).delete(delete_trip))

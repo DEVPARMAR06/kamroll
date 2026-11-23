@@ -85,7 +85,7 @@ pub fn list_dirs(path: &str) -> Result<Value, (u16, &'static str)> {
     Ok(json!({"path": slash(p), "parent": parent, "entries": entries}))
 }
 
-fn free_space(existing: &Path) -> Option<u64> {
+pub fn free_space(existing: &Path) -> Option<u64> {
     let target = existing.canonicalize().ok()?;
     let target = target.to_string_lossy().replace('\\', "/").trim_start_matches("//?/").to_lowercase();
     let mut best: Option<(usize, u64)> = None;
