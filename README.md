@@ -67,9 +67,9 @@ cargo build
 target\debug\photovault-engine ui --port 8765      # same flags as `photovault ui`
 ```
 
-**Ported so far (and proven identical):** settings (read, validate and write the same `config.toml`), drives and folders, backup-location checks, folder-layout previews, status, and the Review and Trips screens (tags, search, trips). `tests/test_contract_rust.py` starts both engines on the same data and compares their answers, including the error messages and the written settings file.
+**Ported so far (and proven identical):** settings (read, validate and write the same `config.toml`), drives and folders, backup-location checks, folder-layout previews, status, the Review and Trips screens (tags, search, trips), every edit to them (confirm or change tags; add, remove, create, rename and delete trips), the SSD half of Health (deep check and repair), and filing photos into trip folders and back. `tests/test_contract_rust.py` starts both engines on the same data and compares their answers, including the error messages and the written settings file; `tests/test_contract_rust_writes.py` runs one scripted session on each engine from identical copies of a vault and compares every answer, the manifest and the files on disk.
 
-**Not ported yet:** iPhone access, the copier, the background jobs (backup, health, analysis, filing, smart tags), thumbnails for HEIC and video, and every edit (confirming tags, editing trips). Those routes answer `501 not ported`, and the idle screens load normally. To run the desktop app on the Rust engine, set `PHOTOVAULT_ENGINE` to the built program.
+**Not ported yet:** iPhone access, the copier, the backup, analysis and smart-tag jobs, the phone-vs-SSD comparison in Health, and thumbnails. Those routes answer `501 not ported`, and the idle screens load normally. To run the desktop app on the Rust engine, set `PHOTOVAULT_ENGINE` to the built program.
 
 ## Safety notes
 

@@ -5,9 +5,12 @@
 //! jobs and filing are still in the Python engine; those routes say so instead of pretending.
 mod app;
 mod config;
+mod edits;
+mod filing;
 mod layout;
 mod manifest;
 mod system;
+mod verify;
 
 use clap::{Parser, Subcommand};
 use std::collections::hash_map::RandomState;

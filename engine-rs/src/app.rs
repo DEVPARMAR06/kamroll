@@ -1,12 +1,12 @@
 //! The HTTP API. Same routes, shapes and guards as the Python engine; parts not ported yet answer plainly.
 
-use crate::{config, layout, manifest, system};
+use crate::{config, edits, filing, layout, manifest, system, verify};
 use axum::{
     extract::{Query, Request, State},
     http::{header, HeaderValue, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
-    routing::get,
+    routing::{get, post},
     Json, Router,
 };
 use include_dir::{include_dir, Dir};
@@ -19,6 +19,8 @@ const NOT_PORTED: &str = "This part of the engine has not been ported to Rust ye
 
 pub struct AppState {
     pub token: String,
+    pub health: verify::Shared,
+    pub org: filing::SharedOrg,
 }
 type St = State<Arc<AppState>>;
 type Q = Query<HashMap<String, String>>;
@@ -187,6 +189,230 @@ async fn trips() -> Response {
     }
 }
 
+// ---- edits: tags and trips ----
+
+fn bad(loc: &[&str], msg: &str, typ: &str) -> Response {
+    (StatusCode::UNPROCESSABLE_ENTITY, Json(json!({"detail": [{"loc": loc, "msg": msg, "type": typ}]}))).into_response()
+}
+
+/// `keys` must be a list of 1..=max strings, as the Python models require.
+fn keys_of(body: &Value, min: usize, max: usize) -> Result<Vec<String>, Response> {
+    let Some(arr) = body.get("keys").and_then(|v| v.as_array()) else {
+        return Err(bad(&["body", "keys"], "Field required", "missing"));
+    };
+    if arr.len() < min {
+        return Err(bad(&["body", "keys"], &format!("List should have at least {min} item after validation, not 0"), "too_short"));
+    }
+    if arr.len() > max {
+        return Err(bad(&["body", "keys"], &format!("List should have at most {max} items after validation, not {}", arr.len()), "too_long"));
+    }
+    arr.iter().map(|v| v.as_str().map(String::from).ok_or_else(|| bad(&["body", "keys"], "Input should be a valid string", "string_type"))).collect()
+}
+
+fn open_db(cfg: &config::Config) -> Result<rusqlite::Connection, Response> {
+    edits::open_rw(cfg).ok_or_else(|| detail(500, "The backup has no manifest yet."))
+}
+
+fn db_err(e: rusqlite::Error) -> Response {
+    detail(500, &format!("Could not save: {e}"))
+}
+
+async fn set_tag(Json(body): Json<Value>) -> Response {
+    let cfg = match need_cfg() { Ok(c) => c, Err(r) => return r };
+    let keys = match keys_of(&body, 1, 500) { Ok(k) => k, Err(r) => return r };
+    let tag = match body.get("tag") {
+        None | Some(Value::Null) => None,
+        Some(Value::String(t)) => Some(t.clone()),
+        Some(_) => return bad(&["body", "tag"], "Input should be a valid string", "string_type"),
+    };
+    if tag.as_deref().is_some_and(|t| !edits::TAGS.contains(&t)) {
+        return detail(422, "Unknown tag");
+    }
+    let db = match open_db(&cfg) { Ok(d) => d, Err(r) => return r };
+    match edits::set_tags(&db, &keys, tag.as_deref()) {
+        Ok(()) => Json(json!({"ok": true, "changed": keys.len()})).into_response(),
+        Err(e) => db_err(e),
+    }
+}
+
+async fn rename_trip(axum::extract::Path(id): axum::extract::Path<String>, Json(body): Json<Value>) -> Response {
+    let cfg = match need_cfg() { Ok(c) => c, Err(r) => return r };
+    let Some(name) = body.get("name").and_then(|v| v.as_str()) else { return bad(&["body", "name"], "Field required", "missing") };
+    if name.chars().count() > 80 {
+        return bad(&["body", "name"], "String should have at most 80 characters", "string_too_long");
+    }
+    let db = match open_db(&cfg) { Ok(d) => d, Err(r) => return r };
+    match edits::rename_trip(&db, &id, name) {
+        Ok(0) => detail(404, "Unknown trip"),
+        Ok(_) => Json(json!({"ok": true})).into_response(),
+        Err(e) => db_err(e),
+    }
+}
+
+async fn create_trip(Json(body): Json<Value>) -> Response {
+    let cfg = match need_cfg() { Ok(c) => c, Err(r) => return r };
+    let name = body.get("name").and_then(|v| v.as_str());
+    let name = match name {
+        None => return bad(&["body", "name"], "Field required", "missing"),
+        Some(n) if n.is_empty() => return bad(&["body", "name"], "String should have at least 1 character", "string_too_short"),
+        Some(n) if n.chars().count() > 80 => return bad(&["body", "name"], "String should have at most 80 characters", "string_too_long"),
+        Some(n) => n,
+    };
+    let date = |f: &str| -> Result<String, Response> {
+        let v = body.get(f).and_then(|v| v.as_str()).ok_or_else(|| bad(&["body", f], "Field required", "missing"))?;
+        let b = v.as_bytes();
+        let ok = b.len() == 10 && b.iter().enumerate().all(|(i, c)| if i == 4 || i == 7 { *c == b'-' } else { c.is_ascii_digit() });
+        if ok { Ok(v.to_string()) } else { Err(bad(&["body", f], "String should match pattern '^\\d{4}-\\d{2}-\\d{2}$'", "string_pattern_mismatch")) }
+    };
+    let (start, end) = match (date("start"), date("end")) {
+        (Ok(s), Ok(e)) => (s, e),
+        (Err(r), _) | (_, Err(r)) => return r,
+    };
+    let extra = if body.get("keys").is_some() { match keys_of(&body, 0, 2000) { Ok(k) => k, Err(r) => return r } } else { vec![] };
+    let db = match open_db(&cfg) { Ok(d) => d, Err(r) => return r };
+    match edits::create_trip(&db, name, &start, &end, &extra) {
+        Ok((id, n)) => Json(json!({"id": id, "files": n})).into_response(),
+        Err(edits::CreateError::Dates) => detail(422, "Those dates are not valid."),
+        Err(edits::CreateError::Order) => detail(422, "The end date is before the start date."),
+        Err(edits::CreateError::Db(e)) => db_err(e),
+    }
+}
+
+async fn add_to_trip(axum::extract::Path(id): axum::extract::Path<String>, Json(body): Json<Value>) -> Response {
+    let cfg = match need_cfg() { Ok(c) => c, Err(r) => return r };
+    let keys = match keys_of(&body, 1, 2000) { Ok(k) => k, Err(r) => return r };
+    let db = match open_db(&cfg) { Ok(d) => d, Err(r) => return r };
+    if db.query_row("SELECT 1 FROM trips WHERE id=?", [&id], |_| Ok(())).is_err() {
+        return detail(404, "Unknown trip");
+    }
+    match edits::assign_to_trip(&db, &keys, &id) {
+        Ok(n) => Json(edits::ok_changed(n)).into_response(),
+        Err(e) => db_err(e),
+    }
+}
+
+async fn take_out_of_trip(axum::extract::Path(id): axum::extract::Path<String>, Json(body): Json<Value>) -> Response {
+    let cfg = match need_cfg() { Ok(c) => c, Err(r) => return r };
+    let keys = match keys_of(&body, 1, 2000) { Ok(k) => k, Err(r) => return r };
+    let db = match open_db(&cfg) { Ok(d) => d, Err(r) => return r };
+    match edits::remove_from_trip(&db, &keys, Some(&id)) {
+        Ok(n) => Json(edits::ok_changed(n)).into_response(),
+        Err(e) => db_err(e),
+    }
+}
+
+async fn delete_trip(axum::extract::Path(id): axum::extract::Path<String>) -> Response {
+    let cfg = match need_cfg() { Ok(c) => c, Err(r) => return r };
+    let db = match open_db(&cfg) { Ok(d) => d, Err(r) => return r };
+    match edits::delete_trip(&db, &id) {
+        Ok(None) => detail(404, "Unknown trip"),
+        Ok(Some(n)) => Json(json!({"ok": true, "released": n})).into_response(),
+        Err(e) => db_err(e),
+    }
+}
+
+// ---- Health: the SSD half. Comparing with the phone still needs the Python engine. ----
+
+async fn health_state(State(st): St) -> Response {
+    let cfg = match need_cfg() { Ok(c) => c, Err(r) => return r };
+    let db = rusqlite::Connection::open_with_flags(cfg.manifest_path(), rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY).ok();
+    let job = st.health.lock().unwrap().snapshot();
+    Json(json!({"job": job, "last": verify::last(db.as_ref())})).into_response()
+}
+
+async fn health_start(State(st): St, Json(body): Json<Value>) -> Response {
+    let cfg = match need_cfg() { Ok(c) => c, Err(r) => return r };
+    match body.get("kind").and_then(|v| v.as_str()) {
+        Some("deep") => {}
+        Some("sync") => return detail(501, NOT_PORTED),
+        _ => return bad(&["body", "kind"], "Input should be 'sync' or 'deep'", "literal_error"),
+    }
+    if st.health.lock().unwrap().active() {
+        return detail(409, "A check is already running.");
+    }
+    if !cfg.manifest_path().exists() {
+        return detail(400, "There is nothing backed up yet.");
+    }
+    verify::spawn_deep(st.health.clone(), cfg.manifest_path(), cfg.backup_root());
+    Json(st.health.lock().unwrap().snapshot()).into_response()
+}
+
+async fn health_cancel(State(st): St) -> Response {
+    let j = st.health.lock().unwrap();
+    if !j.active() {
+        return detail(409, "Nothing is running.");
+    }
+    j.stop.store(true, std::sync::atomic::Ordering::Relaxed);
+    Json(j.snapshot()).into_response()
+}
+
+async fn health_repair(State(st): St) -> Response {
+    let cfg = match need_cfg() { Ok(c) => c, Err(r) => return r };
+    if st.health.lock().unwrap().active() {
+        return detail(409, "Wait for the running check to finish.");
+    }
+    let db = match open_db(&cfg) { Ok(d) => d, Err(r) => return r };
+    let mut problems: Vec<String> = vec![];
+    for kind in ["sync", "deep"] {
+        if let Ok(text) = db.query_row("SELECT v FROM meta WHERE k=?", [format!("health_{kind}")], |r| r.get::<_, String>(0)) {
+            if let Ok(v) = serde_json::from_str::<Value>(&text) {
+                for f in ["missing", "wrong_size", "corrupt"] {
+                    problems.extend(v.get(f).and_then(|x| x.as_array()).into_iter().flatten().filter_map(|s| s.as_str().map(String::from)));
+                }
+            }
+        }
+    }
+    if problems.is_empty() {
+        return detail(409, "No problems recorded.");
+    }
+    let res = verify::repair_problems(&db, &cfg.backup_root(), &problems);
+    let _ = db.execute("DELETE FROM meta WHERE k IN ('health_sync', 'health_deep')", []);
+    Json(res).into_response()
+}
+
+// ---- filing ----
+
+async fn org_state(State(st): St) -> Json<Value> {
+    Json(st.org.lock().unwrap().snapshot())
+}
+
+async fn org_preview() -> Response {
+    let cfg = match need_cfg() { Ok(c) => c, Err(r) => return r };
+    if !cfg.manifest_path().exists() {
+        return Json(json!({"enabled": cfg.file_trips, "into": 0, "back": 0, "total": 0, "samples": []})).into_response();
+    }
+    let db = match open_db(&cfg) { Ok(d) => d, Err(r) => return r };
+    filing::recover_moves(&db, &cfg.backup_root());
+    let moves = filing::plan_filing(&db, &cfg);
+    let into = moves.iter().filter(|m| m.reason == "into-trip").count();
+    let samples: Vec<Value> = moves.iter().take(12).map(|m| json!({"name": m.name, "from": m.src, "to": m.dst, "reason": m.reason})).collect();
+    Json(json!({"enabled": cfg.file_trips, "into": into, "back": moves.len() - into, "total": moves.len(), "samples": samples})).into_response()
+}
+
+async fn org_start(State(st): St) -> Response {
+    let cfg = match need_cfg() { Ok(c) => c, Err(r) => return r };
+    if st.org.lock().unwrap().active() {
+        return detail(409, "Filing is already running.");
+    }
+    if st.health.lock().unwrap().active() {
+        return detail(409, "A backup or check is running. Wait for it to finish first.");
+    }
+    if !cfg.manifest_path().exists() {
+        return detail(400, "There is nothing backed up yet.");
+    }
+    filing::spawn_apply(st.org.clone(), cfg);
+    Json(st.org.lock().unwrap().snapshot()).into_response()
+}
+
+async fn org_cancel(State(st): St) -> Response {
+    let j = st.org.lock().unwrap();
+    if !j.active() {
+        return detail(409, "Nothing is running.");
+    }
+    j.stop.store(true, std::sync::atomic::Ordering::Relaxed);
+    Json(j.snapshot()).into_response()
+}
+
 // ---- pieces that are not ported: honest idle answers so the UI still loads, and 501 for anything that would act ----
 
 async fn device() -> Json<Value> {
@@ -205,16 +431,6 @@ async fn idle_analysis() -> Json<Value> {
 async fn idle_ai() -> Json<Value> {
     Json(json!({"job": {"state": "idle", "kind": null, "done": 0, "total": 0, "message": "", "error": null, "skipped": 0},
                 "enabled": false, "model": "", "ready": false, "done": {"photos": 0, "trips": 0}}))
-}
-async fn idle_health() -> Json<Value> {
-    Json(json!({"job": {"state": "idle", "kind": null, "done": 0, "total": 0, "message": "", "error": null, "started_at": null},
-                "last": {"sync": null, "deep": null}}))
-}
-async fn idle_organize() -> Json<Value> {
-    Json(json!({"state": "idle", "done": 0, "total": 0, "message": "", "error": null, "result": null}))
-}
-async fn idle_organize_preview() -> Json<Value> {
-    Json(json!({"enabled": false, "into": 0, "back": 0, "total": 0, "samples": []}))
 }
 async fn no_content() -> StatusCode {
     StatusCode::NO_CONTENT   // an event stream that ends: the page stops reconnecting
@@ -254,7 +470,7 @@ async fn index(State(st): St) -> Response {
 }
 
 pub fn router(token: String) -> Router {
-    let state = Arc::new(AppState { token });
+    let state = Arc::new(AppState { token, health: Default::default(), org: Default::default() });
     Router::new()
         .route("/", get(index))
         .route("/static/{*path}", get(static_file))
@@ -274,9 +490,19 @@ pub fn router(token: String) -> Router {
         .route("/api/backup/events", get(no_content))
         .route("/api/analysis", get(idle_analysis))
         .route("/api/ai", get(idle_ai))
-        .route("/api/health/state", get(idle_health))
-        .route("/api/organize", get(idle_organize))
-        .route("/api/organize/preview", get(idle_organize_preview))
+        .route("/api/review/tag", post(set_tag))
+        .route("/api/trips", post(create_trip))
+        .route("/api/trips/{id}", axum::routing::put(rename_trip).delete(delete_trip))
+        .route("/api/trips/{id}/items", post(add_to_trip))
+        .route("/api/trips/{id}/remove", post(take_out_of_trip))
+        .route("/api/health/state", get(health_state))
+        .route("/api/health/start", post(health_start))
+        .route("/api/health/cancel", post(health_cancel))
+        .route("/api/health/repair", post(health_repair))
+        .route("/api/organize", get(org_state))
+        .route("/api/organize/preview", get(org_preview))
+        .route("/api/organize/start", post(org_start))
+        .route("/api/organize/cancel", post(org_cancel))
         .fallback(fallback)
         .layer(middleware::from_fn_with_state(state.clone(), guard))
         .with_state(state)
