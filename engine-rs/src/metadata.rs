@@ -3,7 +3,7 @@
 //! `source` says where the date came from: exif | quicktime | mvhd | filename | none.
 
 use crate::tagging::{ext_of, IMAGE_EXTS, VIDEO_EXTS};
-use chrono::{Datelike, Local, NaiveDate, NaiveDateTime, TimeZone};
+use chrono::{Datelike, Local, NaiveDate, NaiveDateTime, TimeZone, Timelike};
 use regex::Regex;
 use std::collections::HashMap;
 use std::fs::File;
@@ -34,7 +34,7 @@ pub fn sane(dt: Option<NaiveDateTime>, min_year: i32) -> bool {
 
 /// Seconds since 1970 for a wall-clock time in this computer's time zone (what Python's `.timestamp()` gives).
 pub fn epoch(dt: NaiveDateTime) -> f64 {
-    Local.from_local_datetime(&dt).earliest().map(|d| d.timestamp() as f64).unwrap_or_else(|| dt.and_utc().timestamp() as f64)
+    Local.from_local_datetime(&dt).earliest().map(|d| d.timestamp() as f64 + dt.nanosecond() as f64 / 1e9).unwrap_or_else(|| dt.and_utc().timestamp() as f64)
 }
 
 pub fn from_epoch(ts: f64) -> NaiveDateTime {

@@ -74,9 +74,10 @@ fn os_thumb(path: &Path, size: u32) -> Option<Vec<u8>> {
     use windows::Win32::UI::Shell::{IShellItemImageFactory, SHCreateItemFromParsingName, SIIGBF_BIGGERSIZEOK, SIIGBF_THUMBNAILONLY};
     unsafe {
         let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
-        let wide: Vec<u16> = path.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
-        let factory: IShellItemImageFactory = SHCreateItemFromParsingName(PCWSTR(wide.as_ptr()), None).ok()?;
-        let hbmp = factory.GetImage(SIZE { cx: size as i32, cy: size as i32 }, SIIGBF_BIGGERSIZEOK | SIIGBF_THUMBNAILONLY).ok()?;
+        let fixed = path.to_string_lossy().replace('/', "\\");
+        let wide: Vec<u16> = std::ffi::OsStr::new(&fixed).encode_wide().chain(std::iter::once(0)).collect();
+        let factory: IShellItemImageFactory = match SHCreateItemFromParsingName(PCWSTR(wide.as_ptr()), None) { Ok(f) => f, Err(e) => { eprintln!("shell item: {e}"); return None } };
+        let hbmp = match factory.GetImage(SIZE { cx: size as i32, cy: size as i32 }, SIIGBF_BIGGERSIZEOK | SIIGBF_THUMBNAILONLY) { Ok(h) => h, Err(e) => { eprintln!("GetImage: {e}"); return None } };
         let mut bm = BITMAP::default();
         GetObjectW(hbmp, std::mem::size_of::<BITMAP>() as i32, Some(&mut bm as *mut _ as *mut _));
         let (w, h) = (bm.bmWidth, bm.bmHeight);
