@@ -424,7 +424,7 @@ h1,h2,h3{letter-spacing:-.016em}
 .sub{font-size:13px;margin-top:3px;color:var(--muted)}
 #page{max-width:calc(var(--col) + 64px);padding:20px 32px 0;gap:16px}
 #page.wide{--col:1240px}
-#page>*{animation:rise .22s ease both}
+#page.enter>*{animation:rise .22s ease both}
 @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
 .card{border-radius:var(--r);box-shadow:0 1px 0 rgba(0,0,0,.02)}
@@ -498,3 +498,13 @@ dialog{border-radius:14px}
   .side{padding:10px 14px}.nav-group,.side-foot{display:none}
   .nav-item[aria-current="page"]::before{display:none}
 }
+
+/* trip names are editable: make that obvious */
+.trip .name,.title-input{border:1px solid var(--line-strong);background:var(--sunk);padding:0 30px 0 10px;margin-left:0;transition:border-color .12s,background .12s}
+.trip .name:hover,.title-input:hover{border-color:var(--faint)}
+.trip .name:focus,.title-input:focus{background:var(--panel);border-color:var(--accent)}
+.trip-name{position:relative;display:block}
+.trip-name::after,#sheetTitle::after{content:"";position:absolute;right:10px;top:50%;width:13px;height:13px;margin-top:-6px;pointer-events:none;opacity:.55;
+  background:currentColor;-webkit-mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M11.5 1.8l2.7 2.7-8.4 8.4-3.6.9.9-3.6z' fill='none' stroke='black' stroke-width='1.5' stroke-linejoin='round'/></svg>") center/contain no-repeat;mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M11.5 1.8l2.7 2.7-8.4 8.4-3.6.9.9-3.6z' fill='none' stroke='black' stroke-width='1.5' stroke-linejoin='round'/></svg>") center/contain no-repeat}
+#sheetTitle{position:relative;display:inline-block}
+.trip .name::placeholder,.title-input::placeholder{color:var(--faint)}

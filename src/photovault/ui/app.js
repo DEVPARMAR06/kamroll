@@ -114,6 +114,8 @@ function route() {
   renderNav(); setHeader(); updateNavBadge();
   if (S.page === "backup") { if (!S.device?.connected) loadDevice(); checkPath(); }
   wide(false);
+  const pg = $("#page"); pg.classList.remove("enter"); void pg.offsetWidth; pg.classList.add("enter");   // fade in once per visit, never on a refresh
+  clearTimeout(route.t); route.t = setTimeout(() => pg.classList.remove("enter"), 400);
   ({ setup: renderSetup, backup: renderBackup, review: renderReview, trips: renderTrips, health: renderHealth }[S.page] || renderEmpty)();
   $("#main").scrollTo?.({ top: 0 });
 }
@@ -814,7 +816,7 @@ async function renderTrips(fresh = true) {
   if (!s) return;
   if (!s.analyzed || R.analysis?.state === "running") { $("#page").innerHTML = analyzeCard("Find your trips"); return; }
   const T = R.trips, list = T?.trips || [];
-  const newForm = `<div class="newtrip">${R.newTrip ? `<div class="nt-form"><label><span class="help">Name</span><input class="input" id="ntName" placeholder="For example, Train to Pune" spellcheck="false"></label><label><span class="help">First day</span><input class="input" id="ntStart" type="date"></label><label><span class="help">Last day</span><input class="input" id="ntEnd" type="date"></label><button class="btn primary" type="button" id="createTripBtn">Create trip</button><button class="btn ghost" type="button" id="newTripBtn">Cancel</button></div><p class="muted" style="font-size:13px;margin-top:8px">Every photo and video taken on those days joins the trip. Take any out afterwards from the Review screen.</p>` : `<button class="btn" type="button" id="newTripBtn">New trip</button>`}</div>`;
+  const newForm = `<div class="newtrip">${R.newTrip ? `<div class="nt-form"><label><span class="help">Name</span><input class="input" id="ntName" placeholder="For example, Train to Pune" spellcheck="false"></label><label><span class="help">First day</span><input class="input" id="ntStart" type="date"></label><label><span class="help">Last day</span><input class="input" id="ntEnd" type="date"></label><button class="btn primary" type="button" id="createTripBtn">Create trip</button><button class="btn ghost" type="button" id="newTripBtn">Cancel</button></div><p class="muted" style="font-size:13px;margin-top:8px">Every photo and video taken on those days joins the trip. Take any out afterwards from the Review screen.</p>` : `<div class="inline" style="gap:10px"><button class="btn" type="button" id="newTripBtn">New trip</button><button class="btn" type="button" id="analyzeBtn" title="Look at every backed-up file again and find trips again. Your names, tags and trip edits are kept.">Find trips again</button><span class="muted" style="font-size:12.5px">${s.analysis_at ? `Last analyzed ${ago(s.analysis_at)}` : ""}</span></div>`}</div>`;
   const home = T?.home ? `${T.home[0].toFixed(2)}, ${T.home[1].toFixed(2)}` : null;
   const info = `<p class="muted">${home ? `Home is where most of your photos were taken (${home}). ` : ""}A trip is a run of days with photos more than ${T?.radius_km || 60} km away. Change this in Setup.</p>`;
   if (!list.length) { $("#page").innerHTML = `${newForm}<div class="card empty"><h2>No trips found yet</h2><p>Trips come from the location saved in your photos. They will show up as more of your library is backed up.</p><button class="btn" type="button" id="analyzeBtn">Analyze again</button></div>${info}`; return; }
@@ -937,13 +939,23 @@ function problemCard(sync, deep) {
     <div class="startbar"><div class="muted">Your iPhone must still hold these files.</div><button class="btn primary" type="button" id="repairBtn" ${isActive() ? "disabled" : ""}>Queue for the next backup</button></div></section>`;
 }
 
+/* While a check runs, move the numbers in place instead of rebuilding the whole page (no flicker). */
+function patchHealth() {
+  const job = H.state.job, card = $("#page .card.run");
+  if (!card) return renderHealth(false);
+  const set = (sel, text) => { const el = card.querySelector(sel); if (el && el.textContent !== text) el.textContent = text; };
+  set(".run-msg", job.message || "");
+  set(".pct", job.total ? Math.round((job.done / job.total) * 100) + "%" : fmtNum(job.done));
+  set(".big .muted", job.total ? `${fmtNum(job.done)} of ${fmtNum(job.total)} files` : "files read so far");
+  const bar = card.querySelector(".big-bar i"); if (bar) bar.style.width = (job.total ? (job.done / job.total) * 100 : 0) + "%";
+}
 async function pollHealth() {
   if (H.polling) return; H.polling = true;
   try {
     while (S.page === "health") {
       await sleep(700); await loadHealth();
       if (H.state.job.state !== "running") break;
-      renderHealth(false);
+      patchHealth();
     }
   } finally { H.polling = false; }
   if (S.page === "health") { renderHealth(false); if (H.state.job.state === "done") toast("Check finished"); }
