@@ -1,6 +1,7 @@
 """Smart tags: the Rust engine must talk to Ollama and store results exactly like the Python engine."""
 import json
 import os
+import re
 import shutil
 import sqlite3
 import threading
@@ -126,3 +127,63 @@ def test_failing_model_stops_after_three_the_same_way(vault, ollama):  # noqa: F
         rs_log = script(rs, [("photos", {"scope": "all"})])
     assert py_log[-1]["job"]["state"] == "error" if isinstance(py_log[-1], dict) else True
     assert rs_log == py_log
+
+
+def test_an_accepted_ai_name_survives_more_photos_and_reanalysis(vault, ollama):  # noqa: F811
+    """Accept the model's title for a trip, back up more photos (one batch before, one a few days after), analyse
+    again: still one trip, still that name, still its suggestion, now with the new photos, the same in both engines."""
+    from datetime import datetime
+
+    from photovault.manifest import Manifest
+    from test_review import UDAIPUR, add, jpeg
+
+    cfg, keys = vault
+    cfg_path = os.environ["PHOTOVAULT_CONFIG"]
+    save_config(replace(load_config(cfg_path), ai_enabled=True, ai_model="llava:7b", ai_host=ollama), cfg_path)
+    with PyApi() as py:
+        py.call("POST", "/api/analysis/start")
+        wait(py, "/api/analysis")
+    pristine = cfg.backup_root.parent / "pristine"
+    shutil.copytree(cfg.backup_root, pristine)
+
+    def scenario(api):
+        api.call("POST", "/api/ai/start", {"kind": "trips"})
+        wait(api, "/api/ai")
+        before = api.call("GET", "/api/trips")[1]["trips"][0]
+        title = before["ai"]["title"]
+        api.call("PUT", f"/api/trips/{before['id']}", {"name": title})                    # "use this name", as the app does
+        m = Manifest(cfg.backup_root)
+        n = 0
+        for day in (datetime(2025, 12, 24, 9), datetime(2026, 1, 5, 9)):                  # an earlier day, and a few days after
+            for i in range(3):
+                n += 1
+                add(m, cfg.backup_root, f"IMG_9{n:03d}.JPG", jpeg("olive", size=(40 + n, 41), make="Apple"), day.replace(hour=9 + i), *UDAIPUR)
+        m.close()
+        api.call("POST", "/api/analysis/start")
+        wait(api, "/api/analysis")
+        after = api.call("GET", "/api/trips")[1]["trips"]
+        return before, after
+
+    FakeOllama.calls = 0
+    with PyApi() as py:
+        py_before, py_after = scenario(py)
+    py_state = ai_tables(cfg)
+    shutil.rmtree(cfg.backup_root)
+    shutil.copytree(pristine, cfg.backup_root)
+    FakeOllama.calls = 0
+    with RsApi(cfg_path) as rs:
+        rs_before, rs_after = scenario(rs)
+    rs_state = ai_tables(cfg)
+
+    title = py_before["ai"]["title"]
+    assert title == "Lakes of Mewar"
+    assert len(py_after) == 1                                                             # not a second trip
+    t = py_after[0]
+    assert (t["start"], t["end"]) == ("2025-12-24", "2026-01-05")                         # grew to take the new photos
+    assert t["name"] == title and t["named"] is True                                      # the accepted name is kept
+    assert t["ai"] and t["ai"]["title"] == title                                          # and its suggestion followed it
+    assert t["items"] >= py_before["items"] + 6
+    assert len(py_state["trips"]) == 1 and py_state["trips"][0][0] == "2025-12-24"        # the suggestion row moved to the new id
+    norm = lambda s: json.loads(re.sub(r"c-[0-9a-f]{8,}", "c-NEW", json.dumps(s)))        # noqa: E731
+    assert norm(rs_after) == norm(py_after)
+    assert rs_state == py_state
