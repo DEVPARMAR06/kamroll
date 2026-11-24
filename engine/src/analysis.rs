@@ -138,9 +138,66 @@ pub fn run_analysis(db: &Connection, cfg: &Config, progress: &dyn Fn(i64, i64, &
         }
     }
 
+    // 4a. A trip that grew (photos from an earlier day were backed up later) gets a new id. It is still the same
+    //     trip to the person, so it keeps its name, its titles and the edits they made.
+    let mut renamed: HashMap<String, String> = HashMap::new();
+    {
+        type Old = (String, Option<String>, String, String);
+        let new_ids: HashSet<&str> = found.iter().map(|t| t.id.as_str()).collect();
+        let mut old_trips: Vec<Old> = db
+            .prepare("SELECT id, name, start, end FROM trips WHERE id NOT LIKE 'c-%'")?
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))?
+            .flatten()
+            .filter(|o: &Old| !new_ids.contains(o.0.as_str()))
+            .collect();
+        for t in &found {
+            if db.query_row("SELECT 1 FROM trips WHERE id=?", [&t.id], |_| Ok(())).is_ok() {
+                continue;
+            }
+            let mut best: Option<(i64, usize)> = None;
+            for (i, o) in old_trips.iter().enumerate() {
+                let (Ok(os), Ok(oe)) = (chrono::NaiveDate::parse_from_str(&o.2, "%Y-%m-%d"), chrono::NaiveDate::parse_from_str(&o.3, "%Y-%m-%d")) else { continue };
+                let ov = (oe.min(t.end) - os.max(t.start)).num_days() + 1;
+                if ov > 0 && best.map(|b| ov > b.0).unwrap_or(true) {
+                    best = Some((ov, i));
+                }
+            }
+            if let Some((_, i)) = best {
+                let o = old_trips.remove(i);
+                if let Some(n) = o.1.clone().filter(|n| !n.is_empty()) {
+                    renamed.insert(t.id.clone(), n);
+                }
+                db.execute("UPDATE trip_edits SET trip_id=? WHERE trip_id=?", params![t.id, o.0])?;
+                db.execute("UPDATE ai_trips SET id=? WHERE id=?", params![t.id, o.0])?;
+            }
+        }
+    }
+
     // 4b. The person's own changes: photos added to or taken out of trips, and trips they made
     let custom: Vec<(String, String, String, String)> =
         db.prepare("SELECT id, name, start, end FROM trip_custom")?.query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))?.flatten().collect();
+    // Photos backed up later that were taken on the days of a trip the person made join it, unless they decided otherwise.
+    let decided: HashSet<String> = db.prepare("SELECT key FROM trip_edits")?.query_map([], |r| r.get(0))?.flatten().collect();
+    for (cid, _name, cs, ce) in &custom {
+        let (Ok(c0), Ok(c1)) = (chrono::NaiveDate::parse_from_str(cs, "%Y-%m-%d"), chrono::NaiveDate::parse_from_str(ce, "%Y-%m-%d")) else { continue };
+        for r in &media {
+            let Some(t) = r.taken else { continue };
+            if decided.contains(&r.key) {
+                continue;
+            }
+            let d = trips::local_date(t);
+            if c0 <= d && d <= c1 {
+                trip_of.insert(r.key.clone(), cid.clone());
+                if let Some(&i) = index.get(r.key.as_str()) {
+                    if verdicts[i].1.tag == "memory" {
+                        let mut reasons = vec![format!("Taken on the days of your trip, {} to {}", c0.format("%d %b"), c1.format("%d %b %Y"))];
+                        reasons.extend(verdicts[i].1.reasons.clone());
+                        verdicts[i].1 = Verdict { tag: "trip".into(), conf: 90, reasons };
+                    }
+                }
+            }
+        }
+    }
     let valid: HashSet<String> = found.iter().map(|t| t.id.clone()).chain(custom.iter().map(|c| c.0.clone())).collect();
     let edits: Vec<(String, String)> = db.prepare("SELECT key, trip_id FROM trip_edits")?.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?.flatten().collect();
     for (key, tid) in edits {
@@ -169,11 +226,12 @@ pub fn run_analysis(db: &Connection, cfg: &Config, progress: &dyn Fn(i64, i64, &
             params![key, v.tag, v.conf, tagging::json_list(&v.reasons), trip_of.get(*key), stamp],
         )?;
     }
-    let old_names: HashMap<String, String> = db
+    let mut old_names: HashMap<String, String> = db
         .prepare("SELECT id, name FROM trips WHERE name IS NOT NULL AND name != ''")?
         .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?
         .flatten()
         .collect();
+    old_names.extend(renamed);
     db.execute("DELETE FROM trips", [])?;
     let mut members: HashMap<&str, i64> = HashMap::new();
     for tid in trip_of.values() {

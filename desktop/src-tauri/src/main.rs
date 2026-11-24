@@ -1,6 +1,6 @@
-// Photo Vault desktop shell.
+// Kamroll desktop shell.
 //
-// It does three things: start the local engine (the Python `photovault ui` server) on a free
+// It does three things: start the local engine (`kamroll-engine ui`) on a free
 // port with a random access token, open a window on it once it answers, and stop the engine when
 // the window closes. All the app logic stays in the engine, so the same window will later host a
 // Rust engine without any change to the page.
@@ -36,23 +36,26 @@ fn project_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("..")
 }
 
-/// Where to find the engine: $PHOTOVAULT_ENGINE, the project's virtualenv, a bundled
-/// sidecar next to this program, then `photovault` on the PATH.
+/// Where to find the engine: $KAMROLL_ENGINE (or $PHOTOVAULT_ENGINE), a development build of the Rust engine,
+/// the bundled copy in the installed app, a copy next to this program, then `kamroll-engine` on the PATH.
 fn engine_program(resources: Option<PathBuf>) -> PathBuf {
-    if let Ok(p) = std::env::var("PHOTOVAULT_ENGINE") {
-        return PathBuf::from(p);
+    for var in ["KAMROLL_ENGINE", "PHOTOVAULT_ENGINE"] {
+        if let Ok(p) = std::env::var(var) {
+            return PathBuf::from(p);
+        }
     }
+    let name = if cfg!(windows) { "kamroll-engine.exe" } else { "kamroll-engine" };
     #[cfg(debug_assertions)]
     {
-        let venv = if cfg!(windows) { ".venv/Scripts/photovault.exe" } else { ".venv/bin/photovault" };
-        let candidate = project_root().join(venv);
-        if candidate.exists() {
-            return candidate;
+        for profile in ["debug", "release"] {
+            let candidate = project_root().join("engine").join("target").join(profile).join(name);
+            if candidate.exists() {
+                return candidate;
+            }
         }
     }
     // An installed app carries the engine as a folder of resources.
     if let Some(dir) = resources {
-        let name = if cfg!(windows) { "photovault-engine.exe" } else { "photovault-engine" };
         let candidate = dir.join("engine").join(name);
         if candidate.exists() {
             return candidate;
@@ -60,13 +63,12 @@ fn engine_program(resources: Option<PathBuf>) -> PathBuf {
     }
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
-            let name = if cfg!(windows) { "photovault-engine.exe" } else { "photovault-engine" };
             if dir.join(name).exists() {
                 return dir.join(name);
             }
         }
     }
-    PathBuf::from("photovault")
+    PathBuf::from("kamroll-engine")
 }
 
 fn start_engine(resources: Option<PathBuf>) -> Result<(Child, u16, String), String> {
@@ -87,8 +89,8 @@ fn start_engine(resources: Option<PathBuf>) -> Result<(Child, u16, String), Stri
     }
     let child = cmd.spawn().map_err(|e| {
         format!(
-            "Could not start the engine ({}): {e}. Install it with `pip install -e .` in the project, \
-             or set PHOTOVAULT_ENGINE to the photovault program.",
+            "Could not start the engine ({}): {e}. Build it with `cargo build` in the engine folder, \
+             or set KAMROLL_ENGINE to the kamroll-engine program.",
             program.display()
         )
     })?;
@@ -181,7 +183,7 @@ fn main() {
             app.set_menu(tauri::menu::Menu::default(app.handle())?)?;
 
             let builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
-                .title("Photo Vault")
+                .title("Kamroll")
                 .inner_size(1180.0, 760.0)
                 .min_inner_size(820.0, 560.0)
                 .visible(false);
@@ -214,7 +216,7 @@ fn main() {
             Ok(())
         })
         .build(tauri::generate_context!())
-        .expect("error while building Photo Vault");
+        .expect("error while building Kamroll");
 
     app.run(|handle, event| {
         if let RunEvent::Exit = event {

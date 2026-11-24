@@ -1,4 +1,4 @@
-//! Rust engine for iPhone Photo Vault.
+//! The Kamroll engine.
 //!
 //! It serves the same UI and the same API as the Python engine (see docs/engine-openapi.json) and has the same
 //! command line: backup, sync, verify, adopt, import and compare old folders.
@@ -30,7 +30,7 @@ use std::collections::hash_map::RandomState;
 use std::hash::{BuildHasher, Hasher};
 
 #[derive(Parser)]
-#[command(name = "photovault-engine", about = "Rust engine for iPhone Photo Vault (the app's engine and the photovault command line)")]
+#[command(name = "kamroll-engine", about = "Kamroll: back up an iPhone to an SSD at original quality (the app's engine and the command line)")]
 struct Cli {
     /// path to config.toml
     #[arg(short = 'c', long = "config", global = true)]

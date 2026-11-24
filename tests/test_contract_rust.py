@@ -1,7 +1,7 @@
 """The Rust engine must answer exactly like the Python engine on the routes it has taken over.
 
 Both engines are pointed at the same settings and the same manifest, and their JSON is compared.
-Skipped when the Rust engine has not been built (`cargo build` in engine-rs).
+Skipped when the Rust engine has not been built (`cargo build` in engine).
 """
 import json
 import os
@@ -20,8 +20,8 @@ from photovault.server.app import create_app
 from test_review import vault  # noqa: F401  (fixture)
 
 ROOT = Path(__file__).resolve().parent.parent
-EXE = ROOT / "engine-rs" / "target" / "debug" / ("photovault-engine.exe" if sys.platform == "win32" else "photovault-engine")
-pytestmark = pytest.mark.skipif(not EXE.exists(), reason="build the Rust engine first: cargo build (in engine-rs)")
+EXE = ROOT / "engine" / "target" / "debug" / ("kamroll-engine.exe" if sys.platform == "win32" else "kamroll-engine")
+pytestmark = pytest.mark.skipif(not EXE.exists(), reason="build the Rust engine first: cargo build (in engine)")
 TOKEN = "tk"
 
 

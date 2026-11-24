@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import time
 from collections import defaultdict
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 from .config import Config
@@ -82,8 +82,41 @@ def run_analysis(manifest: Manifest, cfg: Config, progress=lambda done, total, m
                          else f"Taken during a trip, {t.start:%d %b} to {t.end:%d %b %Y}"),
                         f"Up to {t.max_km:.0f} km from home"] + v.reasons)
 
+    # 4a. A trip that grew (photos from an earlier day were backed up later) gets a new id. It is still the same
+    #     trip to the person, so it keeps its name, its titles and the edits they made.
+    renamed: dict[str, str] = {}
+    new_ids = {t.id for t in trips}
+    old_trips = [r for r in db.execute("SELECT id, name, start, end FROM trips WHERE id NOT LIKE 'c-%'") if r["id"] not in new_ids]
+    for t in trips:
+        if db.execute("SELECT 1 FROM trips WHERE id=?", (t.id,)).fetchone():
+            continue
+        best = None
+        for o in old_trips:
+            ov = (min(date.fromisoformat(o["end"]), t.end) - max(date.fromisoformat(o["start"]), t.start)).days + 1
+            if ov > 0 and (best is None or ov > best[0]):
+                best = (ov, o)
+        if best:
+            o = best[1]
+            old_trips = [x for x in old_trips if x["id"] != o["id"]]
+            if o["name"]:
+                renamed[t.id] = o["name"]
+            db.execute("UPDATE trip_edits SET trip_id=? WHERE trip_id=?", (t.id, o["id"]))
+            db.execute("UPDATE ai_trips SET id=? WHERE id=?", (t.id, o["id"]))
+
     # 4b. The person's own changes: photos added to or taken out of trips, and trips they made
     custom = db.execute("SELECT id, name, start, end FROM trip_custom").fetchall()
+    # Photos backed up later that were taken on the days of a trip the person made join it, unless they decided otherwise.
+    decided = {r[0] for r in db.execute("SELECT key FROM trip_edits")}
+    for c in custom:
+        c0, c1 = date.fromisoformat(c["start"]), date.fromisoformat(c["end"])
+        for r in media:
+            if r["taken"] is None or r["key"] in decided:
+                continue
+            if c0 <= datetime.fromtimestamp(r["taken"]).date() <= c1:
+                trip_of[r["key"]] = c["id"]
+                v = verdicts.get(r["key"])
+                if v and v.tag == "memory":
+                    verdicts[r["key"]] = Verdict("trip", 90, [f"Taken on the days of your trip, {c0:%d %b} to {c1:%d %b %Y}"] + v.reasons)
     valid = {t.id for t in trips} | {c["id"] for c in custom}
     for key, tid in db.execute("SELECT key, trip_id FROM trip_edits").fetchall():
         v = verdicts.get(key)
@@ -107,6 +140,7 @@ def run_analysis(manifest: Manifest, cfg: Config, progress=lambda done, total, m
             "trip_id=excluded.trip_id, updated=excluded.updated",
             (key, v.tag, v.conf, json.dumps(v.reasons), trip_of.get(key), now))
     old_names = {r[0]: r[1] for r in db.execute("SELECT id, name FROM trips WHERE name IS NOT NULL AND name != ''")}
+    old_names.update(renamed)
     db.execute("DELETE FROM trips")
     members = defaultdict(int)
     for tid in trip_of.values():

@@ -26,7 +26,7 @@ from . import health as health_routes
 from . import organize, review, smart
 from .jobs import AiManager, AnalysisManager, HealthManager, JobManager, OrganizeManager
 
-UI_DIR = Path(__file__).resolve().parent.parent / "ui"
+UI_DIR = Path(__file__).resolve().parents[4] / "ui"   # the UI lives at the repository root
 SAMPLES = [("IMG_0442.HEIC", datetime(2025, 12, 27)), ("IMG_9820.MOV", datetime(2024, 8, 24)),
            ("IMG_2147.PNG", None)]
 
@@ -127,7 +127,7 @@ def _status(cfg: Config) -> dict:
 
 
 def create_app(token: str, port: int | None = None, device_factory=None) -> FastAPI:
-    app = FastAPI(title="iphone-photo-vault engine", version=__version__, docs_url=None, redoc_url=None,
+    app = FastAPI(title="Kamroll engine", version=__version__, docs_url=None, redoc_url=None,
                   openapi_url="/api/openapi.json")
 
     if device_factory is None:

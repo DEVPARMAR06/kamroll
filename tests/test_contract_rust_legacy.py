@@ -15,7 +15,7 @@ from photovault.manifest import Manifest
 from test_contract_rust import EXE
 from test_contract_rust_backup import DirFake, exif_jpeg, mov, snapshot, stand_in_phone
 
-pytestmark = pytest.mark.skipif(not EXE.exists(), reason="build the Rust engine first: cargo build (in engine-rs)")
+pytestmark = pytest.mark.skipif(not EXE.exists(), reason="build the Rust engine first: cargo build (in engine)")
 
 
 def make_old_folder(old, phone):

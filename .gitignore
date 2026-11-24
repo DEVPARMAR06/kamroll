@@ -10,7 +10,6 @@ desktop/src-tauri/target/
 desktop/src-tauri/gen/
 !desktop/dist/
 desktop/engine-dist/
-desktop/engine-build/
 docs/reports/
 spike_afc.py
-engine-rs/target/
+engine/target/

@@ -1,8 +1,8 @@
 [package]
-name = "photovault-engine"
+name = "kamroll-engine"
 version = "0.1.0"
 edition = "2021"
-description = "Rust engine for iPhone Photo Vault. Serves the same API and UI as the Python engine, one route at a time."
+description = "The Kamroll engine: backs up an iPhone to an SSD, serves the app UI on 127.0.0.1, and has a command line."
 
 [dependencies]
 anyhow = "1"

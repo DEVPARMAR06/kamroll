@@ -1,0 +1,17 @@
+name: Feature request
+description: An idea to make Kamroll better
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like Kamroll to do?
+  - type: markdown
+    attributes:
+      value: Kamroll only reads the iPhone and never deletes files, and nothing leaves your computer. Ideas that keep those promises are the easiest to accept.

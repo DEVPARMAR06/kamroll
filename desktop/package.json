@@ -1,15 +1,15 @@
 {
-  "name": "photo-vault-desktop",
+  "name": "kamroll-desktop",
   "private": true,
   "version": "0.1.0",
-  "description": "Desktop window for iPhone Photo Vault. Starts the local engine and shows the app.",
+  "description": "Kamroll desktop window. Starts the local engine and shows the app.",
   "scripts": {
     "dev": "tauri dev",
     "build": "tauri build --config src-tauri/tauri.release.conf.json",
     "icons": "tauri icon app-icon.png",
     "tauri": "tauri",
     "build:win": "tauri build --config src-tauri/tauri.release.conf.json --bundles nsis",
-    "build:mac": "tauri build --config src-tauri/tauri.release.conf.json --bundles app,dmg"
+    "build:mac": "tauri build --config src-tauri/tauri.release.conf.json --bundles app,dmg --target universal-apple-darwin"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2"

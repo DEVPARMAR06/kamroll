@@ -16,7 +16,7 @@ from test_contract_rust import EXE, TOKEN
 from test_contract_rust_writes import H, PyApi, RsApi, scrub, wait
 from test_review import vault  # noqa: F401  (fixture)
 
-pytestmark = pytest.mark.skipif(not EXE.exists(), reason="build the Rust engine first: cargo build (in engine-rs)")
+pytestmark = pytest.mark.skipif(not EXE.exists(), reason="build the Rust engine first: cargo build (in engine)")
 
 
 class FakeOllama(BaseHTTPRequestHandler):

@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "iphone-photo-vault"
+name = "kamroll-reference-engine"
 version = "0.1.0"
-description = "Crash-safe, original-quality backup of an iPhone camera roll to an external SSD (Windows + macOS)."
+description = "Python reference engine for Kamroll. The tests compare the Rust engine against it."
 requires-python = ">=3.11"
 license = { text = "MIT" }
 dependencies = ["pymobiledevice3>=4", "Pillow", "pillow-heif", "fastapi", "uvicorn", "psutil", "av", "geonamescache"]
@@ -18,7 +18,3 @@ photovault = "photovault.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/photovault"]
-
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
-testpaths = ["tests"]

@@ -1,5 +1,5 @@
 "use strict";
-/* Photo Vault UI. Talks only to the engine API (/api/*), so the engine can be swapped for a Rust one. */
+/* Kamroll UI. Talks only to the engine API (/api/*), so the engine can be swapped for a Rust one. */
 
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -105,7 +105,7 @@ function renderConn() {
 function setHeader() {
   const p = PAGES[S.page];
   $("#title").textContent = p.title; $("#subtitle").textContent = p.sub;
-  document.title = `${p.title} · Photo Vault`;
+  document.title = `${p.title} · Kamroll`;
 }
 
 function route() {

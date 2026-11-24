@@ -146,7 +146,7 @@ def save_config(cfg: Config, path: str | Path) -> None:
     flag = lambda b: "true" if b else "false"  # noqa: E731
     home = (f"home_lat = {float(cfg.home_lat)}\nhome_lon = {float(cfg.home_lon)}\n"
             if cfg.home_lat is not None and cfg.home_lon is not None else "")
-    text = f"""# Written by iphone-photo-vault. Edit here or in the app.
+    text = f"""# Written by Kamroll. Edit here or in the app.
 
 [paths]
 ssd_root = {_s(root)}

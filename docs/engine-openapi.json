@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "iphone-photo-vault engine",
+    "title": "Kamroll engine",
     "version": "0.1.0"
   },
   "paths": {

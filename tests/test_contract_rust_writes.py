@@ -20,7 +20,7 @@ from photovault.server.app import create_app
 from test_contract_rust import EXE, TOKEN, RustEngine
 from test_review import vault  # noqa: F401  (fixture)
 
-pytestmark = pytest.mark.skipif(not EXE.exists(), reason="build the Rust engine first: cargo build (in engine-rs)")
+pytestmark = pytest.mark.skipif(not EXE.exists(), reason="build the Rust engine first: cargo build (in engine)")
 H = {"x-photovault-token": TOKEN}
 VOLATILE = {"at", "started_at", "analysis_at"}
 
@@ -267,3 +267,58 @@ def test_thumbnails_match_in_size_and_errors(vault):  # noqa: F811
         for path in ("/api/thumb?key=nope", f"/api/thumb?key={keys['mov']}", f"/api/thumb?key={keys['aae']}"):
             a, b = get(py, path), get(rs, path)
             assert (a.status_code, a.json()) == (b.status_code, b.json()), path
+
+
+def test_reanalysis_keeps_names_and_pulls_new_photos_into_existing_trips(vault):  # noqa: F811
+    from datetime import datetime
+
+    from photovault.manifest import Manifest
+    from test_review import UDAIPUR, add, jpeg
+
+    cfg, keys = vault
+    cfg_path = os.environ["PHOTOVAULT_CONFIG"]
+    with PyApi() as py:
+        py.call("POST", "/api/analysis/start")
+        wait(py, "/api/analysis")
+    pristine = cfg.backup_root.parent / "pristine"
+    shutil.copytree(cfg.backup_root, pristine)
+
+    def scenario(api):
+        trip = api.call("GET", "/api/trips")[1]["trips"][0]["id"]
+        api.call("PUT", f"/api/trips/{trip}", {"name": "Mewar holiday"})
+        made = api.call("POST", "/api/trips", {"name": "Pune train", "start": "2025-03-01", "end": "2025-03-02"})[1]["id"]
+        api.call("POST", f"/api/trips/{made}/remove", {"keys": [keys["cam"]]})            # the person took this one out
+        m = Manifest(cfg.backup_root)                                                      # more photos get backed up later
+        new = {
+            "early": add(m, cfg.backup_root, "IMG_7001.JPG", jpeg("cyan", size=(61, 40), make="Apple"), datetime(2025, 12, 24, 10), *UDAIPUR),
+            "train": add(m, cfg.backup_root, "IMG_7002.JPG", jpeg("pink", size=(62, 40), make="Apple"), datetime(2025, 3, 2, 12)),
+            "elsewhere": add(m, cfg.backup_root, "IMG_7003.JPG", jpeg("gold", size=(63, 40), make="Apple"), datetime(2025, 3, 20, 12)),
+        }
+        m.close()
+        api.call("POST", "/api/analysis/start")
+        wait(api, "/api/analysis")
+        return new, made, api.call("GET", "/api/trips")[1]["trips"]
+
+    with PyApi() as py:
+        py_new, py_made, py_trips = scenario(py)
+    py_state = analysis_state(cfg)
+    shutil.rmtree(cfg.backup_root)
+    shutil.copytree(pristine, cfg.backup_root)
+    with RsApi(cfg_path) as rs:
+        rs_new, rs_made, rs_trips = scenario(rs)
+    rs_state = analysis_state(cfg)
+
+    def trip_of(state, key):
+        return next((t[5] for t in state["tags"] if t[0] == key), "missing")
+
+    named = [t for t in py_trips if t["name"] == "Mewar holiday"]
+    assert len(named) == 1 and named[0]["start"] == "2025-12-24"                    # same trip, new first day, name kept
+    assert trip_of(py_state, py_new["early"]) == named[0]["id"]
+    assert trip_of(py_state, py_new["train"]) is not None and trip_of(py_state, py_new["train"]).startswith("c-")
+    assert trip_of(py_state, py_new["elsewhere"]) is None
+    assert trip_of(py_state, keys["cam"]) is None                                     # taken out by the person: stays out
+    norm = lambda s: json.loads(re.sub(r"c-[0-9a-f]{8,}", "c-NEW", json.dumps(s)))  # noqa: E731
+    for table in py_state:
+        a, b = norm(py_state[table]), norm(rs_state[table])
+        assert a == b, (table, [x for x in a if x not in b][:2], [x for x in b if x not in a][:2])
+    assert norm(rs_trips) == norm(py_trips)

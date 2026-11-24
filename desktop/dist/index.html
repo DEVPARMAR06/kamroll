@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Photo Vault</title>
+<title>Kamroll</title>
 <style>
   :root{--bg:#EDEFE9;--ink:#171B18;--muted:#566058;--accent:#B3770A;--bad:#AE3F37}
   @media (prefers-color-scheme:dark){:root{--bg:#111412;--ink:#E9ECE5;--muted:#9BA39B;--accent:#E2AD48;--bad:#E58C82}}
@@ -20,12 +20,12 @@
 </style>
 </head>
 <body>
-<main id="m"><div class="ring"></div><h1 id="t">Starting Photo Vault</h1><p id="d">Getting the engine ready…</p></main>
+<main id="m"><div class="ring"></div><h1 id="t">Starting Kamroll</h1><p id="d">Getting the engine ready…</p></main>
 <script>
   // The desktop shell calls this if the engine cannot start.
   window.showError = function (message) {
     document.getElementById("m").className = "err";
-    document.getElementById("t").textContent = "Photo Vault could not start";
+    document.getElementById("t").textContent = "Kamroll could not start";
     document.getElementById("d").innerHTML = "";
     document.getElementById("d").textContent = message;
   };

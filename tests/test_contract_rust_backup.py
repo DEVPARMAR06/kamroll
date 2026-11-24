@@ -22,7 +22,7 @@ from photovault.device import RemoteFile, ignored
 from photovault.server.app import create_app
 from test_contract_rust import EXE, TOKEN, RustEngine
 
-pytestmark = pytest.mark.skipif(not EXE.exists(), reason="build the Rust engine first: cargo build (in engine-rs)")
+pytestmark = pytest.mark.skipif(not EXE.exists(), reason="build the Rust engine first: cargo build (in engine)")
 H = {"x-photovault-token": TOKEN}
 
 

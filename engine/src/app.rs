@@ -13,7 +13,7 @@ use include_dir::{include_dir, Dir};
 use serde_json::{json, Value};
 use std::{collections::HashMap, sync::Arc};
 
-static UI: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../src/photovault/ui");
+static UI: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../ui");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const NOT_PORTED: &str = "This part of the engine has not been ported to Rust yet. Use the Python engine for backups, checks and filing.";
 

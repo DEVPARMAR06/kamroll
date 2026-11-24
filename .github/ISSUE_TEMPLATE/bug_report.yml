@@ -1,0 +1,40 @@
+name: Bug report
+description: Something does not work
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+  - type: input
+    id: version
+    attributes:
+      label: Kamroll version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Computer
+      options: [Windows 11, Windows 10, macOS (Apple silicon), macOS (Intel), Linux]
+    validations:
+      required: true
+  - type: input
+    id: phone
+    attributes:
+      label: iPhone model and iOS version
+  - type: textarea
+    id: log
+    attributes:
+      label: Anything shown on the Backup screen or in the terminal
+      render: text
+  - type: markdown
+    attributes:
+      value: Please do not attach photos or your pairing records. File names and counts are enough.

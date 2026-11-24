@@ -114,16 +114,22 @@ pub fn user_config_dir() -> PathBuf {
     } else {
         std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from).unwrap_or_else(|| home_dir().join(".config"))
     };
-    base.join("iphone-photo-vault")
+    base.join("kamroll")
 }
 
-/// First existing config: $PHOTOVAULT_CONFIG, ./config.toml, ~/.photovault.toml, the user config folder.
+/// First existing config: $PHOTOVAULT_CONFIG, ./config.toml, ~/.kamroll.toml, the user config folder (earlier names are still read).
 pub fn find_config() -> Option<PathBuf> {
     if let Some(env) = std::env::var_os("PHOTOVAULT_CONFIG") {
         let p = PathBuf::from(env);
         return p.exists().then_some(p);
     }
-    [PathBuf::from("config.toml"), home_dir().join(".photovault.toml"), user_config_dir().join("config.toml")]
+    [
+        PathBuf::from("config.toml"),
+        home_dir().join(".kamroll.toml"),
+        home_dir().join(".photovault.toml"), // earlier name, still read
+        user_config_dir().join("config.toml"),
+        user_config_dir().with_file_name("iphone-photo-vault").join("config.toml"), // earlier name, still read
+    ]
         .into_iter()
         .find(|c| c.exists())
 }
@@ -221,7 +227,7 @@ pub fn save(c: &Config, path: &Path) -> std::io::Result<()> {
         _ => String::new(),
     };
     let text = format!(
-        "# Written by iphone-photo-vault. Edit here or in the app.\n\n[paths]\nssd_root = {}\nbackup_dir = {}\n\n[device]\nremote_roots = {}\n\n[copy]\nlayout = {}\nundated_layout = {}\nchunk_mb = {}\nmax_retries = {}\nignore = {}\nfree_space_margin_gb = {:?}\ncopy_originals_of_reencoded = {}\n\n[ai]\nenabled = {}\nhost = {}\nmodel = {}\n\n[trips]\ntrip_radius_km = {:?}\nfile_trips = {}\ntrip_layout = {}\n{}",
+        "# Written by Kamroll. Edit here or in the app.\n\n[paths]\nssd_root = {}\nbackup_dir = {}\n\n[device]\nremote_roots = {}\n\n[copy]\nlayout = {}\nundated_layout = {}\nchunk_mb = {}\nmax_retries = {}\nignore = {}\nfree_space_margin_gb = {:?}\ncopy_originals_of_reencoded = {}\n\n[ai]\nenabled = {}\nhost = {}\nmodel = {}\n\n[trips]\ntrip_radius_km = {:?}\nfile_trips = {}\ntrip_layout = {}\n{}",
         s(&c.ssd_root.replace('\\', "/")),
         s(&c.backup_dir.replace('\\', "/")),
         list(&c.remote_roots),

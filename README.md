@@ -1,92 +1,77 @@
-# iPhone Photo Vault
+# Kamroll
 
-Back up an iPhone's photos and videos to an external SSD at **original quality**, on Windows and macOS. Crash-safe, resumable, and verifiable. It also sorts what it copied into dated folders, finds your trips from the location saved in your photos, and can file each trip into its own folder.
+Back up your iPhone's photos and videos to an external SSD at **original quality**, on Windows and macOS. Crash-safe, resumable and verifiable. Kamroll also sorts what it copied into dated folders, finds your trips from the location saved in your photos, and can file each trip into its own folder.
+
+> Kamroll is an independent open-source project. It is not affiliated with or endorsed by Apple. "iPhone" is a trademark of Apple Inc.
 
 - **Originals, untouched.** Files are copied byte for byte over USB. No conversion, so EXIF and GPS, Live Photo clips and `.AAE` edit files all survive. The iPhone is only ever read.
 - **Fault tolerant.** Each file is written to a temporary file, checked, then renamed into place. Pull the cable or the power and the next run resumes where it stopped. Every copy has a SHA-256 fingerprint you can re-check.
 - **Proves it matches.** A Health screen compares the phone with the SSD and can re-read every file to catch silent damage. Problems can be queued to be copied again.
-- **Organised by when and where.** Dates come from the photo or video itself. Trips come from GPS, with offline place names. You can rename, add to, take from, create and delete trips, and optionally file each trip into `Trips/<year>/<name> (<month year>)/`.
-- **Tags, no cloud.** Simple rules tag memories, trips, screenshots, chat images, duplicates and junk, with the reasons shown. An optional local Ollama model can suggest trip titles, and describe pictures if you give it a vision model.
-- **Private.** Nothing leaves your computer. The engine listens on `127.0.0.1` only, behind a per-launch token.
+- **Organised by when and where.** Dates come from the photo or video itself. Trips come from GPS, with offline place names. You can rename, add to, take from, create and delete trips, and optionally file each trip into `Trips/<year>/<name> (<month year>)/`. Find trips again after a backup: renamed trips keep their names and pick up new photos from their days.
+- **Tags, no cloud.** Simple rules tag memories, trips, screenshots, chat images, duplicates and junk, with the reasons shown. An optional local [Ollama](https://ollama.com) model can suggest trip titles, and describe pictures if you give it a vision model.
+- **Private.** Nothing leaves your computer and there is no telemetry. The engine listens on `127.0.0.1` only, behind a per-launch token.
+- **Small.** The whole app is a few megabytes. The engine is written in Rust.
 
-The iPhone is read through Apple's USB service. On Windows, install **Apple Devices** from the Microsoft Store (or iTunes). macOS needs nothing extra. Format the SSD **exFAT** to use it on both.
+## Install
 
-## Run it
+Download the installer for your system from the [Releases](../../releases) page.
 
-```powershell
-python -m venv .venv
-.venv\Scripts\activate            # macOS/Linux: source .venv/bin/activate
-pip install -e ".[dev]"
+- **Windows:** run `Kamroll_x.y.z_x64-setup.exe`. Install **Apple Devices** from the Microsoft Store (or iTunes) so Windows can talk to the iPhone.
+- **macOS:** open the `.dmg` and drag Kamroll to Applications. Nothing else to install. Until the app is notarized, macOS asks you to approve it once: System Settings, Privacy & Security, "Open Anyway".
 
-photovault ui                      # opens the app in your browser
-photovault run --limit 200         # or use the command line: copy a small test batch
-photovault verify --deep
-```
+Format the SSD **exFAT** to use it on both. Plug in the iPhone, unlock it and tap **Trust**, pick the SSD in Setup, and press Start backup.
 
-Settings live in `config.toml` (copy `config.example.toml`) or in the app's Setup screen. The backup folder name, the SSD path, the folder layout and every other path are configurable.
+## Build it yourself
 
-### Desktop app
+You need [Rust](https://rustup.rs) (stable), Node 22, and on Windows the Visual Studio C++ build tools.
 
 ```powershell
+cd engine
+cargo build --release                       # the engine: kamroll-engine
+cd ..
+mkdir desktop\engine-dist\kamroll-engine
+copy engine\target\release\kamroll-engine.exe desktop\engine-dist\kamroll-engine\
 cd desktop
 npm install
-npm run dev                        # opens the app in its own window
+npm run build:win                           # or build:mac on a Mac
 ```
 
-The window starts the engine, waits for it, and stops it on exit. The installer bundles the Rust engine (`engine-rs`, about 8 MB, no Python needed):
+To work on it, run the engine and open the app in a browser, or run the desktop window:
 
 ```powershell
-cd engine-rs; cargo build --release; cd ..
-mkdir desktop\engine-dist\photovault-engine
-copy engine-rs	arget
-elease\photovault-engine.exe desktop\engine-dist\photovault-enginecd desktop; npm run build:win     # or build:mac on a Mac
+cd engine; cargo run -- ui --port 8765      # http://127.0.0.1:8765/ (the access token is printed in the page source)
+cd desktop; npm run dev                     # the desktop window, using engine\target\debug\kamroll-engine
 ```
 
-Building needs Rust (current stable) and, on Windows, the Visual Studio C++ build tools with the Windows SDK. See `.github/workflows/desktop.yml` for the Windows and macOS build.
+The engine also has a command line: `kamroll-engine run | scan | status | verify | sync | adopt | consolidate | import-old | relocate-old | compare-old`. Settings live in `config.toml` (copy `config.example.toml`) or in the Setup screen, and every path and folder name is configurable.
 
-## How it is built
+## How it is organised
 
-```
-UI (HTML/JS)  ──  JSON and server-sent events on 127.0.0.1  ──  Engine (Python)  ──  iPhone (USB) · SSD · manifest.db
-```
+| Folder | What it is |
+|---|---|
+| `engine/` | The Rust engine: iPhone link (USB, pairing, file service), crash-safe copier, manifest, tagging, trips, filing, thumbnails, smart tags, command line, and the local API. |
+| `ui/` | The app's screens: plain HTML, CSS and JavaScript, no build step. Talks only to the engine's API (`docs/engine-openapi.json`). |
+| `desktop/` | The [Tauri](https://tauri.app) window that starts the engine and shows the UI. |
+| `reference/` | The original Python engine. It is no longer shipped; the tests run the same sessions on it and on the Rust engine and require identical results. |
+| `tests/` | Contract tests (Python engine vs Rust engine) and Python engine tests. |
 
-- **The engine** (`src/photovault`) does all the work: device access, the crash-safe copier, the manifest, metadata, tagging, trips, filing, verification and the optional Ollama client.
-- **The manifest** is a SQLite file stored on the SSD (`<backup>/.photovault/manifest.db`), so the SSD is the source of truth and moves between machines.
-- **The UI** (`src/photovault/ui`) talks only to the engine API. The API is exported as OpenAPI in `docs/engine-openapi.json`, so the engine can be reimplemented (for example in Rust) without touching the UI.
-- **The desktop shell** (`desktop/`, Tauri) hosts the UI in a native window.
-
-## The Rust engine
-
-`engine-rs/` is a Rust engine that serves the same UI and the same API, taken over one route at a time. Because the UI only talks to the API, either engine can run behind it.
-
-```powershell
-cd engine-rs
-cargo build
-target\debug\photovault-engine ui --port 8765      # same flags as `photovault ui`
-```
-
-**The whole engine is in Rust** and proven identical to the Python engine by `tests/test_contract_rust*.py`: the same sessions run on both, from identical copies of a vault and a stand-in phone folder (`PHOTOVAULT_FAKE_DEVICE`), and every answer, manifest row and file on disk is compared. That covers settings, drives and folders, Review and Trips with every edit, tagging and trip detection, thumbnails, the whole backup (scan, resumable crash-safe copy, capture dates and GPS, live progress), Health (deep check, repair, phone-vs-SSD), filing into trip folders, smart tags through a local Ollama (against a fake one), the old-folder tools, and the command line (`photovault-engine run | scan | status | verify | sync | adopt | consolidate | import-old | relocate-old | compare-old | ui`).
-
-**Checked on a real iPhone 15 Pro:** the Rust iPhone link (`engine-rs/src/afc.rs`) listed 21,514 files and copied 305 (HEIC, JPEG, PNG, MP4); the manifest rows, dates and SHA-256 hashes matched the Python engine's, and HEIC and video previews drew through the operating system's thumbnailer. **Not done yet:** a full 120 GB run, macOS, and a real Ollama model. HEIC photos get their camera data and size from the file header only. The installer bundles the Rust engine (4 MB); the Python engine stays in `src/photovault` as the reference the tests compare against.
-
-## Safety notes
-
-- The phone is never written to or changed.
-- Nothing is deleted. Filing, tags and trip edits only rename files inside the backup folder or write to the manifest, and each rename is journaled so a crash can be finished or undone.
-- Matching an old backup folder by name and size is a shortcut. Use `photovault compare-old` before trusting it, and `photovault verify --deep` to confirm contents.
+The backup folder holds a hidden `.photovault` folder (the manifest and temporary files). The name is kept so backups made by earlier versions keep working.
 
 ## Tests
 
 ```powershell
-pytest
+python -m venv .venv; .venv\Scripts\activate
+pip install -e "reference[dev]"
+cd engine; cargo build; cargo test; cd ..
+python -m pytest
 ```
 
-The suite uses a fake iPhone and a fake Ollama, so it needs no hardware.
+The contract tests start both engines against the same data (a stand-in phone folder through `PHOTOVAULT_FAKE_DEVICE`, and a fake Ollama) and compare every answer, every manifest row and every file on disk.
 
 ## Status
 
-Working: backup, resume, verify, trips, tags, filing, the web UI and the Windows desktop window. Not yet: a macOS build that has been run on a Mac, vision-model tagging tested against a real model, and the rest of the Rust engine (see below).
+Checked on a real iPhone 15 Pro: a full backup of 21,520 files (134 GB) with every file verified, and the manifest, dates and hashes identical to the Python reference engine. Not done yet: macOS has not been run (the CI builds it), and smart tags have only been tested against a fake Ollama. HEIC photos give their camera data and size from the file header; HEIC and video previews come from the operating system's own thumbnailer.
 
-## Licence
+## Contributing, security, licence
 
-MIT. See `LICENSE`.
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md). Kamroll is [MIT licensed](LICENSE); third-party notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Back up at your own risk: Kamroll only reads the phone and never deletes anything, but keep a second copy of anything you cannot replace.
