@@ -118,6 +118,16 @@ pub fn run_analysis(db: &Connection, cfg: &Config, progress: &dyn Fn(i64, i64, &
         let deleted: HashSet<String> = db.prepare("SELECT id FROM trip_deleted")?.query_map([], |r| r.get(0))?.flatten().collect();
         let gaz = Gazetteer::new();
         found = trips::detect_trips(&items, h, cfg.trip_radius_km, Some(&gaz)).into_iter().filter(|t| !deleted.contains(&t.id)).collect();
+        let named: Vec<(chrono::NaiveDate, chrono::NaiveDate)> = db
+            .prepare("SELECT start, end FROM trips WHERE name IS NOT NULL AND name != '' AND id NOT LIKE 'c-%'")?
+            .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?
+            .flatten()
+            .filter_map(|(a, b)| Some((chrono::NaiveDate::parse_from_str(&a, "%Y-%m-%d").ok()?, chrono::NaiveDate::parse_from_str(&b, "%Y-%m-%d").ok()?)))
+            .collect();
+        found = trips::merge_into_named(found, &named, &items);
+        for t in found.iter_mut() {
+            t.id = t.start.format("%Y-%m-%d").to_string();
+        }
         for t in &found {
             for key in &t.keys {
                 trip_of.insert(key.clone(), t.id.clone());

@@ -194,3 +194,42 @@ pub fn detect_trips(items: &[Item], home: (f64, f64), radius_km: f64, gaz: Optio
     }
     trips
 }
+
+pub const MERGE_GAP_DAYS: i64 = 14; // a trip the person named absorbs photos from the same place this soon after (or before) it
+pub const MERGE_KM: f64 = 50.0;
+
+/// Photos from the same place, a few days apart from a trip the person has named, belong to that trip.
+/// Trips nobody has named are left alone, and a visit weeks later stays its own trip.
+pub fn merge_into_named(trips: Vec<Trip>, named: &[(NaiveDate, NaiveDate)], items: &[Item]) -> Vec<Trip> {
+    let claimed = |t: &Trip| named.iter().any(|(a, b)| *a <= t.end && *b >= t.start);
+    let mut sorted = trips;
+    sorted.sort_by_key(|t| t.start);
+    let mut out: Vec<Trip> = vec![];
+    for t in sorted {
+        let merge = match out.last() {
+            Some(prev) => (claimed(prev) || claimed(&t)) && (t.start - prev.end).num_days() <= MERGE_GAP_DAYS && haversine(prev.lat, prev.lon, t.lat, t.lon) <= MERGE_KM,
+            None => false,
+        };
+        if merge {
+            let prev = out.last_mut().unwrap();
+            prev.end = prev.end.max(t.end);
+            let (s, e) = (prev.start, prev.end);
+            prev.keys = items.iter().filter(|it| it.taken.map(|x| (s..=e).contains(&local_date(x))).unwrap_or(false)).map(|it| it.key.clone()).collect();
+            prev.max_km = prev.max_km.max(t.max_km);
+            prev.lat = (prev.lat + t.lat) / 2.0;
+            prev.lon = (prev.lon + t.lon) / 2.0;
+            for p in t.places {
+                if !prev.places.contains(&p) {
+                    prev.places.push(p);
+                }
+            }
+            prev.places.truncate(4);
+            if prev.auto_name.is_empty() {
+                prev.auto_name = t.auto_name;
+            }
+        } else {
+            out.push(t);
+        }
+    }
+    out
+}

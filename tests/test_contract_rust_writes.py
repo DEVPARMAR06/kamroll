@@ -322,3 +322,51 @@ def test_reanalysis_keeps_names_and_pulls_new_photos_into_existing_trips(vault):
         a, b = norm(py_state[table]), norm(rs_state[table])
         assert a == b, (table, [x for x in a if x not in b][:2], [x for x in b if x not in a][:2])
     assert norm(rs_trips) == norm(py_trips)
+
+
+def test_a_named_trip_absorbs_later_photos_from_the_same_place_but_not_a_new_visit(vault):  # noqa: F811
+    from datetime import datetime
+
+    from photovault.manifest import Manifest
+    from test_review import UDAIPUR, add, jpeg
+
+    cfg, keys = vault
+    cfg_path = os.environ["PHOTOVAULT_CONFIG"]
+    with PyApi() as py:
+        py.call("POST", "/api/analysis/start")
+        wait(py, "/api/analysis")
+    pristine = cfg.backup_root.parent / "pristine"
+    shutil.copytree(cfg.backup_root, pristine)
+
+    def scenario(api):
+        trip = api.call("GET", "/api/trips")[1]["trips"][0]["id"]
+        api.call("PUT", f"/api/trips/{trip}", {"name": "Mewar holiday"})
+        m = Manifest(cfg.backup_root)
+        n = 0
+        for day, where in [(datetime(2026, 1, 5, 10), UDAIPUR), (datetime(2026, 2, 1, 10), (15.5, 73.8)), (datetime(2026, 3, 1, 10), UDAIPUR)]:
+            for i in range(3):                                   # three geotagged photos make a trip
+                n += 1
+                add(m, cfg.backup_root, f"IMG_8{n:03d}.JPG", jpeg("teal", size=(50 + n, 40), make="Apple"), day.replace(hour=10 + i), *where)
+        m.close()
+        api.call("POST", "/api/analysis/start")
+        wait(api, "/api/analysis")
+        return api.call("GET", "/api/trips")[1]["trips"]
+
+    with PyApi() as py:
+        py_trips = scenario(py)
+    py_state = analysis_state(cfg)
+    shutil.rmtree(cfg.backup_root)
+    shutil.copytree(pristine, cfg.backup_root)
+    with RsApi(cfg_path) as rs:
+        rs_trips = scenario(rs)
+    rs_state = analysis_state(cfg)
+
+    shown = lambda ts: [(t["start"], t["end"], t["name"] if t["named"] else None, t["items"]) for t in ts]  # noqa: E731
+    summary = shown(py_trips)
+    assert summary[0][:3] == ("2025-12-27", "2026-01-05", "Mewar holiday")          # the named trip grew, same name
+    assert [s[2] for s in summary[1:]] == [None, None] and len(summary) == 3            # Goa and the March visit are new trips
+    assert [s[0] for s in summary[1:]] == ["2026-02-01", "2026-03-01"]
+    assert summary[0][3] >= 7                                                        # the original photos plus the three new ones
+    assert shown(rs_trips) == summary
+    for table in py_state:
+        assert py_state[table] == rs_state[table], table

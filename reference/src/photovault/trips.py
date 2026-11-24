@@ -118,3 +118,33 @@ def detect_trips(items: list[dict], home: tuple[float, float], radius_km: float,
                 t.auto_name = label
         trips.append(t)
     return trips
+
+
+MERGE_GAP_DAYS = 14   # a trip the person named absorbs photos from the same place this soon after (or before) it
+MERGE_KM = 50.0
+
+
+def merge_into_named(trips: list[Trip], named: list[tuple[date, date]], items: list[dict]) -> list[Trip]:
+    """Photos from the same place, a few days apart from a trip the person has named, belong to that trip.
+
+    Without this, a longer stay (or photos backed up later) would show up as a second, unnamed trip next to the
+    one that was already renamed. Trips nobody has named are left alone, and a visit weeks later stays its own trip.
+    """
+    def claimed(t: Trip) -> bool:
+        return any(a <= t.end and b >= t.start for a, b in named)
+
+    out: list[Trip] = []
+    for t in sorted(trips, key=lambda x: x.start):
+        prev = out[-1] if out else None
+        if (prev is not None and (claimed(prev) or claimed(t)) and (t.start - prev.end).days <= MERGE_GAP_DAYS
+                and haversine(prev.lat, prev.lon, t.lat, t.lon) <= MERGE_KM):
+            prev.end = max(prev.end, t.end)
+            prev.keys = [it["key"] for it in items
+                         if it.get("taken") is not None and prev.start <= datetime.fromtimestamp(it["taken"]).date() <= prev.end]
+            prev.max_km = max(prev.max_km, t.max_km)
+            prev.lat, prev.lon = (prev.lat + t.lat) / 2, (prev.lon + t.lon) / 2
+            prev.places = (prev.places + [p for p in t.places if p not in prev.places])[:4]
+            prev.auto_name = prev.auto_name or t.auto_name
+        else:
+            out.append(t)
+    return out

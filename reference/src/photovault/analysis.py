@@ -10,7 +10,7 @@ from pathlib import Path
 from .config import Config
 from .manifest import Manifest
 from .tagging import IMAGE_EXTS, SIDECAR_EXTS, Facts, Verdict, classify, read_facts
-from .trips import Gazetteer, Trip, detect_home, detect_trips, haversine
+from .trips import Gazetteer, Trip, detect_home, detect_trips, haversine, merge_into_named
 
 
 def _cached_facts(db, key: str) -> Facts | None:
@@ -72,6 +72,13 @@ def run_analysis(manifest: Manifest, cfg: Config, progress=lambda done, total, m
     if home:
         deleted = {r[0] for r in db.execute("SELECT id FROM trip_deleted")}
         trips = [t for t in detect_trips(items, home, cfg.trip_radius_km, Gazetteer()) if t.id not in deleted]
+        named = [(date.fromisoformat(r["start"]), date.fromisoformat(r["end"])) for r in
+                 db.execute("SELECT start, end FROM trips WHERE name IS NOT NULL AND name != '' AND id NOT LIKE 'c-%'")]
+        for t in trips:      # the id is the first day
+            t.id = t.start.isoformat()
+        trips = merge_into_named(trips, named, items)
+        for t in trips:
+            t.id = t.start.isoformat()
         for t in trips:
             for key in t.keys:
                 trip_of[key] = t.id
