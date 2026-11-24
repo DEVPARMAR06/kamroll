@@ -78,7 +78,7 @@ pub trait Hooks {
 
 pub const ROW_COLS: &str = "key,src_path,name,size,created,modified,status,dest";
 
-fn row_of(r: &rusqlite::Row) -> rusqlite::Result<Row> {
+pub fn row_of(r: &rusqlite::Row) -> rusqlite::Result<Row> {
     Ok(Row { key: r.get(0)?, src_path: r.get(1)?, name: r.get(2)?, size: r.get(3)?, created: r.get(4)?, modified: r.get(5)?, status: r.get(6)?, dest: r.get(7)? })
 }
 
@@ -268,7 +268,7 @@ pub fn hash_file(p: &Path) -> std::io::Result<String> {
 }
 
 /// Move a verified incoming file into its dated folder and record it. Returns dest.
-fn place(incoming: &Path, row: &Row, sha: &str, cfg: &Config, db: &Connection) -> Result<String, CopyErr> {
+pub fn place(incoming: &Path, row: &Row, sha: &str, cfg: &Config, db: &Connection) -> Result<String, CopyErr> {
     let meta = resolve_meta(row, incoming, db);
     let rel = plan_dest(row, &meta, cfg, db).map_err(CopyErr::Other)?;
     let dest = cfg.backup_root().join(&rel);
@@ -383,7 +383,7 @@ pub fn copy_one(device: &mut dyn Device, db: &Connection, cfg: &Config, row: &Ro
     Ok(())
 }
 
-fn check_space(rows: &[Row], cfg: &Config) -> Result<(), String> {
+pub fn check_space(rows: &[Row], cfg: &Config) -> Result<(), String> {
     let need: i64 = rows.iter().map(|r| r.size).sum();
     let root = cfg.backup_root();
     let _ = std::fs::create_dir_all(&root);

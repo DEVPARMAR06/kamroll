@@ -83,7 +83,7 @@ def mov(utc: datetime) -> bytes:
     secs = int(utc.replace(tzinfo=timezone.utc).timestamp()) + 2082844800
     mvhd = b"mvhd" + b"\x00\0\0\0" + struct.pack(">I", secs) + b"\0" * 20
     moov = struct.pack(">I", 8 + len(mvhd)) + b"moov" + struct.pack(">I", 8 + len(mvhd)) + mvhd
-    return struct.pack(">I", 16) + b"ftypqt  " + b"\0" * 0 + moov + b"\0" * 40
+    return struct.pack(">I", 16) + b"ftypqt  " + b"\0" * 4 + moov + b"\0" * 40
 
 
 def stand_in_phone(base: Path) -> None:

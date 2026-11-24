@@ -193,8 +193,10 @@ def test_both_engines_write_the_same_settings_file(vault, tmp_path):  # noqa: F8
     assert (tmp_path / "again.toml").read_text(encoding="utf-8") == py_path.read_text(encoding="utf-8")
 
 
-def test_parts_not_ported_say_so(engines):
+def test_smart_tags_refuse_the_same_way_when_off(engines):
     py, rs, *_ = engines
-    r = requests.post(rs.url("/api/ai/start"), json={"kind": "trips"}, headers={"x-photovault-token": TOKEN}, timeout=5)
-    assert r.status_code == 501 and "not been ported" in r.json()["detail"]
-    assert rs.get("/api/ollama").json()["reachable"] is False
+    body = {"kind": "trips"}
+    a = py.post("/api/ai/start", json=body)
+    b = requests.post(rs.url("/api/ai/start"), json=body, headers={"x-photovault-token": TOKEN}, timeout=5)
+    assert (a.status_code, a.json()) == (b.status_code, b.json()) == (400, {"detail": "Turn on smart tags and choose a model in Setup first."})
+    assert rs.get("/api/ollama").json() == py.get("/api/ollama").json()

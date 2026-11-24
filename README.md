@@ -33,15 +33,13 @@ npm install
 npm run dev                        # opens the app in its own window
 ```
 
-The window starts the Python engine, waits for it, and stops it on exit. To make an installer that needs no Python, bundle the engine first, then build:
+The window starts the engine, waits for it, and stops it on exit. The installer bundles the Rust engine (`engine-rs`, about 8 MB, no Python needed):
 
 ```powershell
-pyinstaller --noconfirm --onedir --noconsole --name photovault-engine --distpath desktop/engine-dist `
-  --add-data "src/photovault/ui;photovault/ui" --paths src `
-  --collect-all pymobiledevice3 --collect-all geonamescache --collect-all pillow_heif --collect-all av `
-  --collect-submodules uvicorn --collect-submodules fastapi --collect-submodules starlette --collect-submodules photovault `
-  desktop/engine_entry.py
-cd desktop; npm run build:win     # or build:mac on a Mac
+cd engine-rs; cargo build --release; cd ..
+mkdir desktop\engine-dist\photovault-engine
+copy engine-rs	arget
+elease\photovault-engine.exe desktop\engine-dist\photovault-enginecd desktop; npm run build:win     # or build:mac on a Mac
 ```
 
 Building needs Rust (current stable) and, on Windows, the Visual Studio C++ build tools with the Windows SDK. See `.github/workflows/desktop.yml` for the Windows and macOS build.
@@ -67,9 +65,9 @@ cargo build
 target\debug\photovault-engine ui --port 8765      # same flags as `photovault ui`
 ```
 
-**Ported so far (and proven identical):** everything the app needs. Settings, drives and folders, status, the Review and Trips screens and every edit to them, tagging and trip detection (analysis), thumbnails, the whole backup (scan, resumable crash-safe copy, capture dates and GPS, live progress), Health (deep check, repair, phone-vs-SSD comparison) and filing photos into trip folders. `tests/test_contract_rust*.py` run the same sessions on the Python and the Rust engine, from identical copies of a vault and a stand-in phone folder (`PHOTOVAULT_FAKE_DEVICE`), and compare every answer, the manifest rows and the files on disk.
+**The whole engine is in Rust** and proven identical to the Python engine by `tests/test_contract_rust*.py`: the same sessions run on both, from identical copies of a vault and a stand-in phone folder (`PHOTOVAULT_FAKE_DEVICE`), and every answer, manifest row and file on disk is compared. That covers settings, drives and folders, Review and Trips with every edit, tagging and trip detection, thumbnails, the whole backup (scan, resumable crash-safe copy, capture dates and GPS, live progress), Health (deep check, repair, phone-vs-SSD), filing into trip folders, smart tags through a local Ollama (against a fake one), the old-folder tools, and the command line (`photovault-engine run | scan | status | verify | sync | adopt | consolidate | import-old | relocate-old | compare-old | ui`).
 
-**Checked on a real iPhone 15 Pro:** the Rust engine's own iPhone link (`engine-rs/src/afc.rs`) listed 21,514 files and copied 305 (HEIC, JPEG, PNG, MP4); the manifest rows, dates and SHA-256 hashes matched the Python engine's on the same files, and HEIC and video previews drew through the operating system's thumbnailer. A full 120 GB run has not been done, and macOS is untested. HEIC photos get their camera data and size from the file header only. **Still Python only:** smart tags (Ollama) and the old-folder tools. Those routes answer `501 not ported`. To run the desktop app on the Rust engine, set `PHOTOVAULT_ENGINE` to the built program.
+**Checked on a real iPhone 15 Pro:** the Rust iPhone link (`engine-rs/src/afc.rs`) listed 21,514 files and copied 305 (HEIC, JPEG, PNG, MP4); the manifest rows, dates and SHA-256 hashes matched the Python engine's, and HEIC and video previews drew through the operating system's thumbnailer. **Not done yet:** a full 120 GB run, macOS, and a real Ollama model. HEIC photos get their camera data and size from the file header only. The installer bundles the Rust engine (4 MB); the Python engine stays in `src/photovault` as the reference the tests compare against.
 
 ## Safety notes
 

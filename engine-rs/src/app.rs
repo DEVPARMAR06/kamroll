@@ -1,6 +1,6 @@
 //! The HTTP API. Same routes, shapes and guards as the Python engine; parts not ported yet answer plainly.
 
-use crate::{analysis, backup, config, copier, device, edits, filing, layout, manifest, system, verify};
+use crate::{ai, analysis, backup, config, copier, device, edits, filing, layout, manifest, system, verify};
 use axum::{
     extract::{Query, Request, State},
     http::{header, HeaderValue, StatusCode},
@@ -23,6 +23,7 @@ pub struct AppState {
     pub org: filing::SharedOrg,
     pub analysis: analysis::Shared,
     pub backup: backup::Manager,
+    pub ai: ai::Shared,
 }
 type St = State<Arc<AppState>>;
 type Q = Query<HashMap<String, String>>;
@@ -459,8 +460,9 @@ async fn device() -> Json<Value> {
         }
     })
 }
-async fn ollama() -> Json<Value> {
-    Json(json!({"reachable": false, "models": [], "error": "Smart tags are not available in the Rust engine yet."}))
+async fn ollama(Query(q): Q) -> Json<Value> {
+    let host = q.get("host").cloned().unwrap_or_else(|| "http://127.0.0.1:11434".into());
+    Json(tokio::task::spawn_blocking(move || ai::ollama_info(&host)).await.unwrap_or_else(|_| json!({"reachable": false, "models": [], "error": "Ollama is not running at this address."})))
 }
 async fn backup_state(State(st): St) -> Json<Value> {
     Json(st.backup.snapshot())
@@ -548,9 +550,58 @@ async fn analysis_start(State(st): St) -> Response {
     analysis::spawn(st.analysis.clone(), cfg);
     Json(st.analysis.lock().unwrap().snapshot()).into_response()
 }
-async fn idle_ai() -> Json<Value> {
-    Json(json!({"job": {"state": "idle", "kind": null, "done": 0, "total": 0, "message": "", "error": null, "skipped": 0},
-                "enabled": false, "model": "", "ready": false, "done": {"photos": 0, "trips": 0}}))
+async fn ai_state(State(st): St) -> Response {
+    let cfg = match need_cfg() { Ok(c) => c, Err(r) => return r };
+    let (mut photos, mut trips) = (0i64, 0i64);
+    if cfg.manifest_path().exists() && !cfg.ai_model.is_empty() {
+        if let Some(db) = manifest::open_ro(&cfg) {
+            photos = db.query_row("SELECT COUNT(*) FROM ai_tags WHERE model=?", [&cfg.ai_model], |r| r.get(0)).unwrap_or(0);
+            trips = db.query_row("SELECT COUNT(*) FROM ai_trips WHERE model=?", [&cfg.ai_model], |r| r.get(0)).unwrap_or(0);
+        }
+    }
+    let job = st.ai.lock().unwrap().snapshot();
+    Json(json!({"job": job, "enabled": cfg.ai_enabled, "model": cfg.ai_model, "ready": cfg.ai_enabled && !cfg.ai_model.is_empty(), "done": {"photos": photos, "trips": trips}})).into_response()
+}
+
+async fn ai_start(State(st): St, Json(body): Json<Value>) -> Response {
+    let cfg = match need_cfg() { Ok(c) => c, Err(r) => return r };
+    let kind = match body.get("kind").and_then(|v| v.as_str()) {
+        Some(k @ ("trips" | "photos")) => k.to_string(),
+        None => return bad(&["body", "kind"], "Field required", "missing"),
+        _ => return bad(&["body", "kind"], "Input should be 'trips' or 'photos'", "literal_error"),
+    };
+    let limit = match body.get("limit") {
+        None | Some(Value::Null) => 300,
+        Some(v) => match v.as_i64() {
+            Some(n) if (1..=5000).contains(&n) => n,
+            _ => return bad(&["body", "limit"], "Input should be a valid integer", "int_parsing"),
+        },
+    };
+    let scope = match body.get("scope").and_then(|v| v.as_str()) {
+        None => "uncertain".to_string(),
+        Some(s @ ("uncertain" | "all")) => s.to_string(),
+        _ => return bad(&["body", "scope"], "Input should be 'uncertain' or 'all'", "literal_error"),
+    };
+    if st.ai.lock().unwrap().active() {
+        return detail(409, "Smart tags are already running.");
+    }
+    if !cfg.ai_enabled || cfg.ai_model.is_empty() {
+        return detail(400, "Turn on smart tags and choose a model in Setup first.");
+    }
+    if !cfg.manifest_path().exists() {
+        return detail(400, "There is nothing backed up yet.");
+    }
+    ai::spawn(st.ai.clone(), cfg, kind, limit, scope);
+    Json(st.ai.lock().unwrap().snapshot()).into_response()
+}
+
+async fn ai_cancel(State(st): St) -> Response {
+    let j = st.ai.lock().unwrap();
+    if !j.active() {
+        return detail(409, "Nothing is running.");
+    }
+    j.stop.store(true, std::sync::atomic::Ordering::Relaxed);
+    Json(j.snapshot()).into_response()
 }
 async fn fallback(req: Request) -> Response {
     if req.uri().path().starts_with("/api") {
@@ -587,7 +638,7 @@ async fn index(State(st): St) -> Response {
 }
 
 pub fn router(token: String) -> Router {
-    let state = Arc::new(AppState { token, health: Default::default(), org: Default::default(), analysis: Default::default(), backup: Default::default() });
+    let state = Arc::new(AppState { token, health: Default::default(), org: Default::default(), analysis: Default::default(), backup: Default::default(), ai: Default::default() });
     Router::new()
         .route("/", get(index))
         .route("/static/{*path}", get(static_file))
@@ -611,7 +662,9 @@ pub fn router(token: String) -> Router {
         .route("/api/backup/events", get(backup_events))
         .route("/api/analysis", get(analysis_state))
         .route("/api/analysis/start", post(analysis_start))
-        .route("/api/ai", get(idle_ai))
+        .route("/api/ai", get(ai_state))
+        .route("/api/ai/start", post(ai_start))
+        .route("/api/ai/cancel", post(ai_cancel))
         .route("/api/thumb", get(thumb))
         .route("/api/review/tag", post(set_tag))
         .route("/api/trips", post(create_trip))
