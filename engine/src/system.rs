@@ -19,7 +19,7 @@ pub fn list_volumes() -> Vec<Value> {
     for d in Disks::new_with_refreshed_list().list() {
         let mount = slash(d.mount_point());
         let fs = d.file_system().to_string_lossy().to_string();
-        if fs.is_empty() || d.total_space() == 0 {
+        if fs.is_empty() || fs == "squashfs" || d.total_space() == 0 {   // squashfs: Linux app packages, not drives
             continue;
         }
         if cfg!(target_os = "macos") && !(mount.starts_with("/Volumes/") || mount == "/") {
@@ -27,8 +27,9 @@ pub fn list_volumes() -> Vec<Value> {
         }
         let is_system = mount.eq_ignore_ascii_case(&system);
         let label = {
+            // Windows and macOS give the volume's name; Linux gives a device path, so the folder name reads better there.
             let n = d.name().to_string_lossy().to_string();
-            if n.is_empty() {
+            if n.is_empty() || n.starts_with("/dev/") {
                 Path::new(&mount).file_name().map(|f| f.to_string_lossy().to_string()).unwrap_or_else(|| mount.clone())
             } else {
                 n

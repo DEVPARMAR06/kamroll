@@ -37,7 +37,7 @@ def list_volumes() -> list[dict]:
     out = []
     system = os.environ.get("SystemDrive", "C:").upper() + "\\" if sys.platform == "win32" else "/"
     for p in psutil.disk_partitions(all=False):
-        if "cdrom" in p.opts or not p.fstype:
+        if "cdrom" in p.opts or not p.fstype or p.fstype == "squashfs":   # squashfs: Linux app packages, not drives
             continue
         mount = p.mountpoint
         try:
