@@ -9,6 +9,7 @@
     "icons": "tauri icon app-icon.png",
     "tauri": "tauri",
     "build:win": "tauri build --bundles nsis",
+    "build:store": "tauri build --bundles nsis --config src-tauri/tauri.microsoftstore.conf.json",
     "build:mac": "tauri build --bundles app,dmg --target universal-apple-darwin"
   },
   "devDependencies": {

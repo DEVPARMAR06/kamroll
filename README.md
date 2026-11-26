@@ -14,7 +14,7 @@ Back up your iPhone's photos and videos to an external SSD at **original quality
 
 ## Install
 
-Download the installer for your system from the [Releases](../../releases) page.
+Download the installer for your system from the [Releases](../../releases) page (the first release is being prepared; until then, build it yourself as below).
 
 - **Windows:** run `Kamroll_x.y.z_x64-setup.exe`. Install **Apple Devices** from the Microsoft Store (or iTunes) so Windows can talk to the iPhone.
 - **macOS:** open the `.dmg` and drag Kamroll to Applications. Nothing else to install. Until the app is notarized, macOS asks you to approve it once: System Settings, Privacy & Security, "Open Anyway".
@@ -70,4 +70,4 @@ Checked on a real iPhone 15 Pro: a full backup of a library of more than 20,000 
 
 ## Contributing, security, licence
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md). Kamroll is [MIT licensed](LICENSE); third-party notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Back up at your own risk: Kamroll only reads the phone and never deletes anything, but keep a second copy of anything you cannot replace.
+See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md) and [docs/PUBLISHING.md](docs/PUBLISHING.md). Kamroll is [MIT licensed](LICENSE); third-party notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Back up at your own risk: Kamroll only reads the phone and never deletes anything, but keep a second copy of anything you cannot replace.

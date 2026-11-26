@@ -110,15 +110,34 @@ fn os_thumb(path: &Path, size: u32) -> Option<Vec<u8>> {
 
 #[cfg(target_os = "macos")]
 fn os_thumb(path: &Path, size: u32) -> Option<Vec<u8>> {
-    let dir = std::env::temp_dir().join(format!("photovault-ql-{}", std::process::id()));
+    use std::process::{Command, Stdio};
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::time::{Duration, Instant};
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    let dir = std::env::temp_dir().join(format!("kamroll-ql-{}-{}", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)));
     std::fs::create_dir_all(&dir).ok()?;
-    let ok = std::process::Command::new("qlmanage")
+    let mut child = Command::new("qlmanage")
         .args(["-t", "-s", &size.to_string(), "-o"])
         .arg(&dir)
         .arg(path)
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false);
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .ok()?;
+    // Quick Look can hang on a damaged file (or with no screen session), so it gets a few seconds and is stopped.
+    let deadline = Instant::now() + Duration::from_secs(8);
+    let ok = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break status.success(),
+            Ok(None) if Instant::now() < deadline => std::thread::sleep(Duration::from_millis(50)),
+            _ => {
+                let _ = child.kill();
+                let _ = child.wait();
+                break false;
+            }
+        }
+    };
     let out = dir.join(format!("{}.png", path.file_name()?.to_string_lossy()));
     let data = if ok { image::open(&out).ok().and_then(|i| encode(i.resize(size, size, FilterType::Triangle))) } else { None };
     let _ = std::fs::remove_dir_all(&dir);

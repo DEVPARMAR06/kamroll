@@ -145,6 +145,7 @@ def test_folders_and_path_checks_match(engines, tmp_path):
     assert both(py, rs, "/api/fs", path=str(tmp_path / "missing"))[0] == {"detail": "That folder does not exist."}
     for p in (tmp_path, tmp_path / "NewBackup", tmp_path / "x" / "y"):
         a, b = both(py, rs, "/api/path-check", path=str(p))
+        assert abs((a.pop("free") or 0) - (b.pop("free") or 0)) < 5e9, p        # the disk moves between the two calls
         assert a == b, p
     assert not (tmp_path / "NewBackup").exists()
     pv, rv = py.get("/api/volumes").json(), rs.get("/api/volumes").json()

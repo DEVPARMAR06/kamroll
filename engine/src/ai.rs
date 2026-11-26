@@ -220,7 +220,10 @@ fn run_photos(job: &Shared, db: &Connection, cfg: &Config, limit: i64, scope: &s
         .prepare(&sql)
         .and_then(|mut s| s.query_map(params![cfg.ai_model, limit * 3], |r| Ok((r.get(0)?, r.get(1)?, r.get::<_, Option<String>>(2)?.unwrap_or_default()))).map(|it| it.flatten().collect()))
         .map_err(|e| AiError(e.to_string()))?;
-    let rows: Vec<_> = all.into_iter().filter(|(_, n, _)| crate::thumbs::can_preview(crate::tagging::ext_of(n).trim_start_matches('.'))).take(limit as usize).collect();
+    let rows: Vec<_> = all.into_iter().filter(|(_, n, _)| {
+        let e = crate::tagging::ext_of(n);
+        crate::tagging::IMAGE_EXTS.contains(&e.as_str()) || crate::tagging::VIDEO_EXTS.contains(&e.as_str())
+    }).take(limit as usize).collect();
     {
         let mut j = job.lock().unwrap();
         j.total = rows.len() as i64;

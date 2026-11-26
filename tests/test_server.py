@@ -42,7 +42,7 @@ def test_config_roundtrip_and_bak(client, tmp_path):
     saved = client.put("/api/config", json=GOOD).json()
     assert saved["exists"] is True and saved["backup_root"].replace("\\", "/") == "E:/PhotoBackup"
     again = client.get("/api/config").json()
-    assert again["config"]["layout"] == GOOD["layout"] and again["config"]["ssd_root"] == "E:/"
+    assert again["config"]["layout"] == GOOD["layout"] and again["config"]["ssd_root"] in ("E:/", "E:")   # a drive letter is only a path on Windows
     client.put("/api/config", json={**GOOD, "backup_dir": "Photos2"})
     assert (tmp_path / "cfg" / "config.toml.bak").exists()
     assert client.get("/api/config").json()["config"]["backup_dir"] == "Photos2"

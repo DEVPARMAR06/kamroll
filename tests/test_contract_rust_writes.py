@@ -240,7 +240,8 @@ def test_python_and_rust_analyse_the_same_way(vault):  # noqa: F811
         rs_summary = rs.call("GET", "/api/analysis")[1]
         assert rs.call("POST", "/api/analysis/start")[0] in (200, 409)
     assert rs_summary["state"] == "done", rs_summary
-    assert rs_summary["summary"] == py_summary["summary"]
+    rounded = lambda s: {**s, "home": [round(x, 6) for x in s["home"]]}  # noqa: E731  (last-bit float sums differ)
+    assert rounded(rs_summary["summary"]) == rounded(py_summary["summary"])
     rs_state = analysis_state(cfg)
     for table in py_state:
         assert py_state[table] == rs_state[table], table

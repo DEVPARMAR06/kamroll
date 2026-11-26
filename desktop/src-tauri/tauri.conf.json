@@ -15,6 +15,12 @@
   },
   "bundle": {
     "active": true,
+    "publisher": "Dev Parmar",
+    "homepage": "https://github.com/DEVPARMAR06/kamroll",
+    "shortDescription": "Back up iPhone photos to an SSD at original quality",
+    "category": "Utility",
+    "copyright": "Copyright (c) 2026 Dev Parmar",
+    "licenseFile": "../../LICENSE",
     "targets": "all",
     "icon": [
       "icons/32x32.png",
