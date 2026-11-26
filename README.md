@@ -66,7 +66,7 @@ The contract tests start both engines against the same data (a stand-in phone fo
 
 ## Status
 
-Checked on a real iPhone 15 Pro: a full backup of 21,520 files (134 GB) with every file verified, and the manifest, dates and hashes identical to the Python reference engine. Not done yet: macOS has not been run (the CI builds it), and smart tags have only been tested against a fake Ollama. HEIC photos give their camera data and size from the file header; HEIC and video previews come from the operating system's own thumbnailer.
+Checked on a real iPhone 15 Pro: a full backup of a library of more than 20,000 files with every file verified, and the manifest, dates and hashes identical to the Python reference engine on a sample. Not done yet: macOS has not been run (the CI builds it), and smart tags have only been tested against a fake Ollama. HEIC photos give their camera data and size from the file header; HEIC and video previews come from the operating system's own thumbnailer.
 
 ## Contributing, security, licence
 

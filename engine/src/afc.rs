@@ -12,6 +12,7 @@ use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, Server
 use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
 use rustls::{ClientConfig, ClientConnection, DigitallySignedStruct, SignatureScheme, StreamOwned};
 use std::io::{Read, Write};
+#[cfg(not(unix))]
 use std::net::TcpStream;
 use std::sync::Arc;
 use std::time::Duration;
@@ -43,7 +44,12 @@ const IPHONE_NAMES: [(&str, &str); 16] = [
 
 fn mux_socket() -> Result<Stream, String> {
     #[cfg(unix)]
-    let s: Stream = Box::new(std::os::unix::net::UnixStream::connect("/var/run/usbmuxd").map_err(|e| format!("usbmuxd is not running: {e}"))?);
+    let s: Stream = {
+        let u = std::os::unix::net::UnixStream::connect("/var/run/usbmuxd").map_err(|e| format!("usbmuxd is not running: {e}"))?;
+        let _ = u.set_read_timeout(Some(Duration::from_secs(30)));
+        let _ = u.set_write_timeout(Some(Duration::from_secs(30)));
+        Box::new(u)
+    };
     #[cfg(not(unix))]
     let s: Stream = {
         let t = TcpStream::connect_timeout(&"127.0.0.1:27015".parse().unwrap(), Duration::from_secs(3)).map_err(|e| format!("usbmuxd is not running: {e}"))?;
