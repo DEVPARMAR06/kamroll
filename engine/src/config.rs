@@ -117,21 +117,39 @@ pub fn user_config_dir() -> PathBuf {
     base.join("kamroll")
 }
 
-/// First existing config: $PHOTOVAULT_CONFIG, ./config.toml, ~/.kamroll.toml, the user config folder (earlier names are still read).
+/// The settings file, if there is one. There is one place for it (see `user_config_dir`); the
+/// PHOTOVAULT_CONFIG variable and the command line's `-c` point somewhere else for tests and scripts.
 pub fn find_config() -> Option<PathBuf> {
-    if let Some(env) = std::env::var_os("PHOTOVAULT_CONFIG") {
-        let p = PathBuf::from(env);
-        return p.exists().then_some(p);
+    let p = default_config_path();
+    p.exists().then_some(p)
+}
+
+/// Copy settings saved by an earlier version into the one place settings now live. The old file is left alone.
+pub fn migrate_settings() {
+    if std::env::var_os("PHOTOVAULT_CONFIG").is_some() {
+        return;
     }
-    [
-        PathBuf::from("config.toml"),
-        home_dir().join(".kamroll.toml"),
-        home_dir().join(".photovault.toml"), // earlier name, still read
-        user_config_dir().join("config.toml"),
-        user_config_dir().with_file_name("iphone-photo-vault").join("config.toml"), // earlier name, still read
-    ]
-        .into_iter()
-        .find(|c| c.exists())
+    let target = user_config_dir().join("config.toml");
+    migrate_into(
+        &target,
+        &[
+            home_dir().join(".kamroll.toml"),
+            home_dir().join(".photovault.toml"),
+            user_config_dir().with_file_name("iphone-photo-vault").join("config.toml"),
+        ],
+    );
+}
+
+fn migrate_into(target: &Path, older: &[PathBuf]) {
+    if target.exists() {
+        return;
+    }
+    if let Some(found) = older.iter().find(|p| p.is_file()) {
+        if let Some(dir) = target.parent() {
+            let _ = std::fs::create_dir_all(dir);
+        }
+        let _ = std::fs::copy(found, target);
+    }
 }
 
 pub fn default_config_path() -> PathBuf {
@@ -468,5 +486,18 @@ mod tests {
         for f in ["layout", "chunk_mb", "ai_host", "remote_roots"] {
             assert!(fields.contains(&f), "missing {f}");
         }
+    }
+
+    #[test]
+    fn earlier_settings_move_to_the_one_place_without_overwriting() {
+        let dir = tempfile::tempdir().unwrap();
+        let (old, target) = (dir.path().join(".photovault.toml"), dir.path().join("kamroll").join("config.toml"));
+        std::fs::write(&old, "old").unwrap();
+        migrate_into(&target, &[dir.path().join("missing"), old.clone()]);
+        assert_eq!(std::fs::read_to_string(&target).unwrap(), "old");
+        std::fs::write(&old, "changed").unwrap();
+        migrate_into(&target, &[old.clone()]);
+        assert_eq!(std::fs::read_to_string(&target).unwrap(), "old");
+        assert!(old.exists());
     }
 }

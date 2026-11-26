@@ -43,11 +43,11 @@ const S = {
 };
 
 const PAGES = {
-  setup: { label: "Setup", title: "Setup", sub: "Choose where your photos are backed up and how they are organised.", icon: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>' },
-  backup: { label: "Backup", title: "Backup", sub: "What is on the SSD and what is still waiting on the phone.", icon: '<path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>' },
-  review: { label: "Review", title: "Review", sub: "Check how photos were tagged before they are filed.", icon: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>' },
-  trips: { label: "Trips", title: "Trips", sub: "Photos grouped by where and when you travelled.", icon: '<path d="M12 21s-6.5-5.6-6.5-10.5a6.5 6.5 0 0 1 13 0C18.5 15.4 12 21 12 21z"/><circle cx="12" cy="10.5" r="2.3"/>', },
-  health: { label: "Health", title: "Health", sub: "Prove the SSD matches the phone.", icon: '<path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z"/><path d="M9 12l2.2 2.2L15.5 10"/>' },
+  setup: { label: "Setup", title: "Setup", sub: "Choose where your photos are backed up and how they are organised", icon: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>' },
+  backup: { label: "Backup", title: "Backup", sub: "What is on the SSD and what is still waiting on the phone", icon: '<path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>' },
+  review: { label: "Review", title: "Review", sub: "Check how photos were tagged before they are filed", icon: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>' },
+  trips: { label: "Trips", title: "Trips", sub: "Photos grouped by where and when you travelled", icon: '<path d="M12 21s-6.5-5.6-6.5-10.5a6.5 6.5 0 0 1 13 0C18.5 15.4 12 21 12 21z"/><circle cx="12" cy="10.5" r="2.3"/>', },
+  health: { label: "Health", title: "Health", sub: "Prove the SSD matches the phone", icon: '<path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z"/><path d="M9 12l2.2 2.2L15.5 10"/>' },
 };
 const PRESETS = [
   { label: "Year, then year-month", layout: "{year}/{year}-{month}/{name}" },
@@ -81,7 +81,7 @@ const NAV_GROUPS = { setup: "Backup", review: "Library", health: "Maintenance" }
 function renderNav() {
   $("#nav").innerHTML = Object.entries(PAGES).map(([id, p]) => `${NAV_GROUPS[id] ? `<div class="nav-group">${NAV_GROUPS[id]}</div>` : ""}
     <button class="nav-item" data-nav="${id}" ${id === S.page ? 'aria-current="page"' : ""}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p.icon}</svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p.icon}</svg>
       <span>${p.label}</span>${p.soon ? '<span class="soon">Soon</span>' : ""}${id === "backup" ? '<span class="live" id="navLive" hidden></span>' : ""}
     </button>`).join("");
 }
@@ -144,12 +144,12 @@ function renderSetup() {
   </section>
 
   <section class="card" aria-labelledby="h-org">
-    <div class="card-head"><h2 id="h-org">Folder organisation</h2><p>Files are filed by the date they were taken, read from the photo or video itself.</p></div>
+    <div class="card-head"><h2 id="h-org">Folder organisation</h2><p>Files are filed by the date they were taken, read from the photo or video itself</p></div>
     <div class="rows">
       <div class="row full"><div class="ctrl"><div class="presets" id="presets" role="radiogroup" aria-label="Folder layout"></div></div></div>
       <div class="row"><div><div class="lab"><label for="f-layout">Layout pattern</label></div><div class="help">Fields: <code>{year}</code> <code>{month}</code> <code>{day}</code> <code>{name}</code> <code>{stem}</code> <code>{ext}</code></div></div>
         <div class="ctrl"><input class="input mono" id="f-layout" data-field="layout" value="${esc(c.layout)}" spellcheck="false" autocomplete="off"><div class="err" data-err="layout" hidden></div></div></div>
-      <div class="row"><div><div class="lab"><label for="f-undated_layout">Files with no date</label></div><div class="help">Where photos go when no capture date can be found.</div></div>
+      <div class="row"><div><div class="lab"><label for="f-undated_layout">Files with no date</label></div><div class="help">Where photos go when no capture date can be found</div></div>
         <div class="ctrl"><input class="input mono" id="f-undated_layout" data-field="undated_layout" value="${esc(c.undated_layout)}" spellcheck="false" autocomplete="off"><div class="err" data-err="undated_layout" hidden></div></div></div>
       <div class="row full"><div class="ctrl"><div class="pathpreview" id="preview" aria-live="polite"></div></div></div>
     </div>
@@ -158,14 +158,14 @@ function renderSetup() {
   <section class="card" aria-labelledby="h-orig">
     <div class="card-head"><h2 id="h-orig">Originals</h2><p>Photos and videos are copied byte for byte, with all location data, edit files and Live Photo clips. Nothing is converted.</p></div>
     <div class="rows"><div class="row full"><div class="switch"><div><div class="lab" id="l-orig">Also keep the phone's original of any re-encoded video</div>
-      <div class="help">If an old backup holds a shrunk or slow-motion export of a video, the original on the phone is still copied.</div></div>
+      <div class="help">If an old backup holds a shrunk or slow-motion export of a video, the original on the phone is still copied</div></div>
       <button class="sw" role="switch" type="button" data-toggle="copy_originals_of_reencoded" aria-labelledby="l-orig" aria-checked="${c.copy_originals_of_reencoded}"></button></div></div></div>
   </section>
 
   <section class="card" aria-labelledby="h-trips">
     <div class="card-head"><h2 id="h-trips">Trips</h2><p>A trip is a run of days with photos taken far from home. Home is found automatically from where most of your photos are taken.</p></div>
     <div class="rows">
-      <div class="row"><div><div class="lab"><label for="f-trip_radius_km">Distance that counts as away</label></div><div class="help">In kilometres from home.</div></div>
+      <div class="row"><div><div class="lab"><label for="f-trip_radius_km">Distance that counts as away</label></div><div class="help">In kilometres from home</div></div>
         <div class="ctrl"><input class="input" id="f-trip_radius_km" type="number" min="5" max="2000" data-field="trip_radius_km" data-type="float" value="${c.trip_radius_km}"><div class="err" data-err="trip_radius_km" hidden></div></div></div>
       <div class="row"><div><div class="lab">Home location</div><div class="help">Leave both empty to detect it. Use decimal degrees, for example 19.07 and 72.88.</div></div>
         <div class="ctrl"><div class="grid2"><label><span class="help">Latitude</span><input class="input mono" data-field="home_lat" data-type="floatnull" value="${c.home_lat ?? ""}" placeholder="Automatic" inputmode="decimal"></label>
@@ -193,7 +193,7 @@ function renderSetup() {
         <div class="ctrl"><input class="input mono" id="f-remote_roots" data-field="remote_roots" data-type="list" value="${esc(c.remote_roots.join(", "))}" spellcheck="false"><div class="err" data-err="remote_roots" hidden></div></div></div>
       <div class="row"><div><div class="lab"><label for="f-ignore">Ignore names</label></div><div class="help">Files matching these patterns are skipped, for example <code>._*</code>.</div></div>
         <div class="ctrl"><input class="input mono" id="f-ignore" data-field="ignore" data-type="list" value="${esc(c.ignore.join(", "))}" spellcheck="false"></div></div>
-      <div class="row"><div><div class="lab">Reliability</div><div class="help">If the cable drops, copying resumes where it stopped.</div></div>
+      <div class="row"><div><div class="lab">Reliability</div><div class="help">If the cable drops, copying resumes where it stopped</div></div>
         <div class="ctrl"><div class="grid2">
           <label><span class="help">Retries per file</span><input class="input" type="number" min="1" max="20" data-field="max_retries" data-type="int" value="${c.max_retries}"></label>
           <label><span class="help">Read block size (MB)</span><input class="input" type="number" min="1" max="64" data-field="chunk_mb" data-type="int" value="${c.chunk_mb}"></label></div>
@@ -202,6 +202,7 @@ function renderSetup() {
     </div>
   </details>
 
+  ${S.cfgPath ? `<p class="setpath">Settings are saved on this computer in <code class="selectable">${esc(S.cfgPath)}</code></p>` : ""}
   <div class="savebar" id="savebar" hidden>
     <div class="msg" id="saveMsg"></div>
     <button class="btn ghost" type="button" id="discard">Discard</button>
@@ -235,7 +236,7 @@ function renderVolumes() {
       <span class="chips">${v.is_system ? '<span class="tag">System drive</span>' : ""}<span class="tag">${esc(v.fstype)}</span></span></button>`;
   });
   if (cur && !match) rows.unshift(`<button class="vol" type="button" role="radio" aria-checked="true"><span class="radio"></span><span style="min-width:0"><b>Custom location</b><div class="meta">${esc(cur)}</div></span><span class="chips"><span class="tag">Not currently listed</span></span></button>`);
-  el.innerHTML = rows.join("") || '<div class="muted">No drives found.</div>';
+  el.innerHTML = rows.join("") || '<div class="muted">No drives found</div>';
 }
 
 function renderPresets() {
@@ -284,7 +285,7 @@ const refreshPreview = debounce(async () => {
   try {
     const r = await api(`/api/layout-preview?layout=${encodeURIComponent(S.cfg.layout)}&undated=${encodeURIComponent(S.cfg.undated_layout)}&trip_layout=${encodeURIComponent(S.cfg.trip_layout || "")}`);
     S.preview = r;
-    if (r.error) el.innerHTML = '<div class="pv-row"><span class="muted">Fix the pattern above to see where files will go.</span></div>';
+    if (r.error) el.innerHTML = '<div class="pv-row"><span class="muted">Fix the pattern above to see where files will go</span></div>';
     else el.innerHTML = r.samples.map((s) => `<div class="pv-row"><span class="n">${esc(s.name)}${s.date ? " · " + esc(s.date) : " · no date"}</span><code>${esc(s.path)}</code></div>`).join("");
     ["layout", "undated_layout", "trip_layout"].forEach((f) => { if (r.field === f) S.errors[f] = r.error; else delete S.errors[f]; });
     const tp = $("#tripPreview"); if (tp) tp.textContent = r.trip_sample ? "Example: " + r.trip_sample : "";
@@ -414,7 +415,9 @@ function readyView() {
   const checks = preflight(), blocked = checks.some((c) => c.ok === false || c.ok === null), w = waiting();
   const icon = (ok) => ok === true ? '<span class="ck ok" aria-label="OK"></span>' : ok === false ? '<span class="ck bad" aria-label="Problem"></span>' : '<span class="spin"></span>';
   const modes = [
-    ["all", "Everything waiting", `${fmtNum(w.files)} files · ${fmtBytes(w.bytes)}`],
+    S.status?.has_backup
+      ? ["all", "Everything waiting", `${fmtNum(w.files)} files · ${fmtBytes(w.bytes)}`]
+      : ["all", "Everything on the iPhone", "Counted when the backup starts"],
     ["test", "A small test batch first", "Copies 200 files so you can check the result before the full run"],
     ["originals", "Only originals of re-encoded videos", "Phone originals that exist as shrunk or slow-motion copies in an old backup"],
   ];
@@ -465,7 +468,7 @@ function paintRun() {
     btns.dataset.want = want;
     btns.innerHTML = (j.state === "paused" ? '<button class="btn" type="button" id="resumeBtn">Resume</button>' : `<button class="btn" type="button" id="pauseBtn" ${busy ? "disabled" : ""}>Pause</button>`) + `<button class="btn" type="button" id="cancelBtn" ${busy ? "disabled" : ""}>Stop</button>`;
   }
-  $("#jLog").innerHTML = [...j.recent].reverse().slice(0, 14).map((e) => `<li><span class="dot ${e.level === "error" ? "bad" : e.level === "warn" ? "warn" : ""}"></span><span class="faint num">${clock(e.t)}</span><span>${esc(e.text)}</span></li>`).join("") || '<li class="muted">Nothing yet.</li>';
+  $("#jLog").innerHTML = [...j.recent].reverse().slice(0, 14).map((e) => `<li><span class="dot ${e.level === "error" ? "bad" : e.level === "warn" ? "warn" : ""}"></span><span class="faint num">${clock(e.t)}</span><span>${esc(e.text)}</span></li>`).join("") || '<li class="muted">Nothing yet</li>';
 }
 
 function updateNavBadge() {
@@ -491,20 +494,34 @@ async function refreshStatus() {
   try { S.status = await api("/api/status"); } catch (_) { /* keep the old numbers */ }
   checkPath();
 }
-function connectEvents() {
-  const es = new EventSource("/api/backup/events?token=" + encodeURIComponent(TOKEN));
-  es.onmessage = (m) => {
-    const prev = S.job?.state;
-    S.job = JSON.parse(m.data);
-    if (prev && ACTIVE.includes(prev) && !ACTIVE.includes(S.job.state)) refreshStatus().then(() => S.page === "backup" && renderBackup());
-    updateJobUI();
-  };
+/* Inside the desktop app the pages come from the app itself, so progress is asked for instead of streamed. */
+const EMBEDDED = location.protocol === "kamroll:" || location.hostname === "kamroll.localhost";
+function applyJob(job) {
+  const prev = S.job?.state;
+  S.job = job;
+  if (prev && ACTIVE.includes(prev) && !ACTIVE.includes(S.job.state)) refreshStatus().then(() => S.page === "backup" && renderBackup());
+  updateJobUI();
+}
+async function connectEvents() {
+  if (!EMBEDDED) {
+    const es = new EventSource("/api/backup/events?token=" + encodeURIComponent(TOKEN));
+    es.onmessage = (m) => applyJob(JSON.parse(m.data));
+    return;
+  }
+  let seen = null;
+  for (;;) {
+    try {
+      const job = await api("/api/backup");
+      const running = ACTIVE.includes(job.state);
+      if (running || job.version !== seen || job.state !== S.job?.state) { seen = job.version; applyJob(job); }
+      await sleep(running ? 500 : 2000);
+    } catch (_) { await sleep(2000); }
+  }
 }
 
 function renderEmpty() {
   const p = PAGES[S.page];
-  const note = { health: "For now, run <code>photovault verify --deep</code> or <code>photovault sync</code> in a terminal." }[S.page];
-  $("#page").innerHTML = `<div class="card empty"><h2>${p.title} is not ready yet</h2><p>${note}</p></div>`;
+  $("#page").innerHTML = `<div class="card empty"><h2>${p.title} is not ready yet</h2></div>`;
 }
 
 /* ---------- Review and Trips (tags and places from the SSD copy) ---------- */
@@ -627,7 +644,7 @@ function paintGrid() {
   $("#sheetTitle").textContent = R.filter === "all" ? "All files" : TAG[R.filter].label;
   $("#sheetSub").textContent = `${fmtNum(R.total)} file${R.total === 1 ? "" : "s"}, least sure first`;
   $("#confirmAll").hidden = !R.items.length;
-  g.innerHTML = R.items.map((i) => tileHtml(i, false)).join("") || '<div class="muted" style="grid-column:1/-1;padding:30px 0">Nothing with this tag.</div>';
+  g.innerHTML = R.items.map((i) => tileHtml(i, false)).join("") || '<div class="muted" style="grid-column:1/-1;padding:30px 0">Nothing with this tag</div>';
   $("#more").innerHTML = R.items.length < R.total ? `<button class="btn" type="button" id="moreBtn">Show more (${fmtNum(R.total - R.items.length)} left)</button>` : "";
 }
 
@@ -638,7 +655,7 @@ function paintTripGroups(g) {
   $("#confirmAll").hidden = true;
   g.className = "groups";
   g.innerHTML = R.groups.map(({ trip: t, items, total }) => `<section class="tgroup"><header class="tg-head"><div><h3>${esc(t.name || "Unnamed trip")}</h3><p class="muted num">${tripDates(t)} · ${fmtNum(total)} file${total === 1 ? "" : "s"} · up to ${fmtNum(t.max_km)} km from home</p></div><button class="btn small" type="button" data-tripview="${esc(t.id)}">Open trip</button></header>
-    <div class="grid compact">${items.map((i) => tileHtml(i, true)).join("")}</div>${total > items.length ? `<button class="more-link" type="button" data-tripview="${esc(t.id)}">+ ${fmtNum(total - items.length)} more from this trip</button>` : ""}</section>`).join("") || '<div class="muted" style="padding:30px 0">No trips yet.</div>';
+    <div class="grid compact">${items.map((i) => tileHtml(i, true)).join("")}</div>${total > items.length ? `<button class="more-link" type="button" data-tripview="${esc(t.id)}">+ ${fmtNum(total - items.length)} more from this trip</button>` : ""}</section>`).join("") || '<div class="muted" style="padding:30px 0">No trips yet</div>';
 }
 
 function paintOneTrip(g) {
@@ -650,7 +667,7 @@ function paintOneTrip(g) {
   const days = new Map();
   R.items.forEach((i) => { const k = i.taken ? new Date(i.taken * 1000).toLocaleDateString("en-CA") : "none"; (days.get(k) || days.set(k, []).get(k)).push(i); });
   g.innerHTML = [...days].map(([k, items]) => `<section class="tgroup"><header class="tg-head day"><h3>${k === "none" ? "No date" : new Date(k + "T00:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</h3><span class="muted num">${fmtNum(items.length)} file${items.length === 1 ? "" : "s"}</span></header>
-    <div class="grid compact">${items.map((i) => tileHtml(i, true)).join("")}</div></section>`).join("") || '<div class="muted" style="padding:30px 0">Nothing here.</div>';
+    <div class="grid compact">${items.map((i) => tileHtml(i, true)).join("")}</div></section>`).join("") || '<div class="muted" style="padding:30px 0">Nothing here</div>';
   $("#more").innerHTML = R.items.length < R.total ? `<button class="btn" type="button" id="moreBtn">Show more (${fmtNum(R.total - R.items.length)} left)</button>` : "";
 }
 
@@ -678,12 +695,12 @@ function paintLoupe() {
     return;
   }
   const it = R.items.find((i) => i.key === R.sel);
-  if (!it) { el.innerHTML = '<div class="muted">Pick a file to see why it was tagged.</div>'; return; }
+  if (!it) { el.innerHTML = '<div class="muted">Pick a file to see why it was tagged</div>'; return; }
   const t = TAG[it.tag];
   el.innerHTML = `<div class="preview">${it.has_thumb ? `<img alt="" src="${thumb(it.key, 640)}">` : `<span class="ph big">${it.kind === "video" ? "Video" : esc(it.name.split(".").pop().toUpperCase())}<small>No preview</small></span>`}</div>
     <div><div class="fname">${esc(it.name)}</div><div class="chips" style="margin-top:8px"><span class="pill" style="color:var(${t.color})">${glyph(it.tag)}<span style="color:var(--ink)">${it.confirmed ? "Confirmed" : "Suggested"}: ${t.label}</span></span></div></div>
     ${it.confirmed ? "" : `<div class="conf"><span class="num">${it.conf}% sure</span><i><b style="width:${it.conf}%"></b></i></div>`}
-    ${it.ai ? `<div><h3>Smart tags</h3><div class="chips">${it.ai.tags.map((x) => `<span class="chip">${esc(x)}</span>`).join("")}</div>${it.ai.caption ? `<p class="muted" style="font-size:13px;margin-top:6px">${esc(it.ai.caption)}</p>` : ""}${it.ai.kind && it.ai.kind !== "memory" && it.ai.kind !== it.tag ? `<p class="muted" style="font-size:13px;margin-top:4px">The model thinks this is ${it.ai.kind === "junk" ? "junk" : "a " + it.ai.kind}.</p>` : ""}</div>` : ""}
+    ${it.ai ? `<div><h3>Smart tags</h3><div class="chips">${it.ai.tags.map((x) => `<span class="chip">${esc(x)}</span>`).join("")}</div>${it.ai.caption ? `<p class="muted" style="font-size:13px;margin-top:6px">${esc(it.ai.caption)}</p>` : ""}${it.ai.kind && it.ai.kind !== "memory" && it.ai.kind !== it.tag ? `<p class="muted" style="font-size:13px;margin-top:4px">The model thinks this is ${it.ai.kind === "junk" ? "junk" : "a " + it.ai.kind}</p>` : ""}</div>` : ""}
     <div><h3>Why this tag</h3><ul class="why">${it.reasons.map((r) => `<li>${esc(r)}</li>`).join("")}</ul></div>
     <dl><dt>Taken</dt><dd>${fmtDate(it.taken)}</dd>${it.trip_id ? `<dt>Trip</dt><dd>${esc(tripOf(it.trip_id)?.name || it.trip_id)}</dd>` : ""}<dt>Location</dt><dd>${it.gps ? "Saved in the file" : "None"}</dd><dt>Size</dt><dd>${fmtBytes(it.size)}</dd></dl>
     <div class="acts"><button class="btn primary wide2" type="button" data-act="confirm" ${it.confirmed && it.tag === it.suggested ? "disabled" : ""}>${glyph("check")}${it.confirmed ? "Confirmed" : "Confirm " + t.label}<kbd>Enter</kbd></button>
@@ -715,7 +732,7 @@ function paintFiling() {
   if (st && st.state === "running") { const pc = st.total ? Math.round((st.done / st.total) * 100) : 0; el.innerHTML = `<section class="card"><div class="card-head"><h2>Filing trips into folders</h2><p>${esc(st.message)}</p></div><div style="padding:6px 22px 20px"><div class="bar" style="height:10px"><i style="width:${pc}%;background:var(--accent)"></i></div><div class="startbar" style="padding:12px 0 0;border:0"><span class="muted num">${fmtNum(st.done)} of ${fmtNum(st.total)} files</span><button class="btn" type="button" id="orgStop">Stop</button></div></div></section>`; return; }
   const err = st && st.state === "error" ? `<p style="color:var(--bad);padding:0 22px">${esc(st.error)}</p>` : "";
   const res = st && st.result && (st.state === "done" || st.state === "cancelled") ? `<p class="muted" style="padding:0 22px 6px">Last run: ${fmtNum(st.result.moved)} files moved${st.result.failed_count ? `, ${fmtNum(st.result.failed_count)} could not be moved` : ""}${st.result.stopped ? ", stopped early" : ""}. ${st.result.ssd_ok ? "Every file on the SSD is still in place." : "The SSD check found a problem. Open Health."}</p>` : "";
-  if (!p || (!p.enabled && p.total === 0)) { el.innerHTML = `<section class="card"><div class="card-head"><h2>Filing trips into folders</h2><p>Off. Turn it on in Setup to keep each trip's photos together in one folder on the SSD, such as Trips/2025/Udaipur (Dec 2025).</p></div>${err}<div class="startbar"><span class="muted">Nothing on the SSD is moved until you apply it here.</span><button class="btn" type="button" data-nav="setup">Open Setup</button></div></section>`; return; }
+  if (!p || (!p.enabled && p.total === 0)) { el.innerHTML = `<section class="card"><div class="card-head"><h2>Filing trips into folders</h2><p>Off. Turn it on in Setup to keep each trip's photos together in one folder on the SSD, such as Trips/2025/Udaipur (Dec 2025).</p></div>${err}<div class="startbar"><span class="muted">Nothing on the SSD is moved until you apply it here</span><button class="btn" type="button" data-nav="setup">Open Setup</button></div></section>`; return; }
   const rows = p.samples.map((s) => `<li><span class="muted">${esc(s.name)}</span><code>${esc(s.from)}</code><span class="arrow">to</span><code>${esc(s.to)}</code></li>`).join("");
   const headline = p.total === 0 ? "Every trip photo is already in its trip folder." : `${p.into ? `${fmtNum(p.into)} file${p.into === 1 ? "" : "s"} will move into trip folders` : ""}${p.into && p.back ? " and " : ""}${p.back ? `${fmtNum(p.back)} will go back to their dated folders` : ""}.`;
   el.innerHTML = `<section class="card"><div class="card-head"><h2>Filing trips into folders</h2><p>${p.enabled ? "On." : "Off, so photos filed earlier will go back."} Files are renamed inside the SSD, never copied or deleted, and they can all be put back.</p></div>${err}${res}
@@ -836,7 +853,7 @@ function tripCard(t) {
   return `<article class="trip"><div class="trip-main"><div class="trip-name"><input class="input name" data-trip="${esc(t.id)}" value="${esc(t.name)}" placeholder="Name this trip" aria-label="Trip name" spellcheck="false"></div>
     <p class="muted num">${days} · ${t.days} day${t.days === 1 ? "" : "s"}</p><p class="muted num">${fmtNum(t.items)} files · up to ${fmtNum(t.max_km)} km from home</p>
     <div class="chips">${t.places.map((p) => `<span class="chip">${esc(p)}</span>`).join("")}</div>${t.ai && t.ai.title !== t.name ? `<div class="aisug"><span class="pill"><i></i>Suggested</span> <b>${esc(t.ai.title)}</b> <button class="btn small" type="button" data-useai="${esc(t.id)}" data-title="${esc(t.ai.title)}">Use this name</button>${t.ai.summary ? `<p class="muted">${esc(t.ai.summary)}</p>` : ""}</div>` : ""}</div>
-    <div class="strip">${strip}</div><div class="trip-actions"><button class="btn" type="button" data-tripview="${esc(t.id)}">Review files</button>${R.confirmDelete === t.id ? `<span class="muted" style="font-size:12.5px">Photos stay on the SSD.</span><button class="btn danger small" type="button" data-del-trip="${esc(t.id)}">Yes, dissolve it</button><button class="btn ghost small" type="button" data-del-cancel="1">Keep</button>` : `<button class="btn ghost small" type="button" data-del-trip="${esc(t.id)}">Delete trip</button>`}</div></article>`;
+    <div class="strip">${strip}</div><div class="trip-actions"><button class="btn" type="button" data-tripview="${esc(t.id)}">Review files</button>${R.confirmDelete === t.id ? `<span class="muted" style="font-size:12.5px">Photos stay on the SSD</span><button class="btn danger small" type="button" data-del-trip="${esc(t.id)}">Yes, dissolve it</button><button class="btn ghost small" type="button" data-del-cancel="1">Keep</button>` : `<button class="btn ghost small" type="button" data-del-trip="${esc(t.id)}">Delete trip</button>`}</div></article>`;
 }
 
 function wide(on) { $("#page").classList.toggle("wide", on); $(".top").classList.toggle("wide", on); }
@@ -936,7 +953,7 @@ function problemCard(sync, deep) {
   const merged = (k) => ({ count: sum(k), shown: rs.flatMap((r) => r[k].shown).slice(0, 40) });
   return `<section class="card"><div class="card-head"><h2>What needs fixing</h2><p>Fixing queues these files to be copied again from the iPhone the next time you back up. A damaged copy is moved aside into a quarantine folder, never deleted. Files that came from an old backup folder cannot be fetched again and are only reported.</p></div>
     <div class="rows">${fileList("Missing from the SSD", merged("missing"))}${fileList("Wrong size", merged("wrong_size"))}${fileList("Damaged (fingerprint differs)", merged("corrupt"))}</div>
-    <div class="startbar"><div class="muted">Your iPhone must still hold these files.</div><button class="btn primary" type="button" id="repairBtn" ${isActive() ? "disabled" : ""}>Queue for the next backup</button></div></section>`;
+    <div class="startbar"><div class="muted">Your iPhone must still hold these files</div><button class="btn primary" type="button" id="repairBtn" ${isActive() ? "disabled" : ""}>Queue for the next backup</button></div></section>`;
 }
 
 /* While a check runs, move the numbers in place instead of rebuilding the whole page (no flicker). */
@@ -986,7 +1003,7 @@ async function fdLoad(path) {
     $("#fdUp").disabled = r.parent == null;
     $("#fdPick").disabled = !r.path;
     $("#fdHint").textContent = r.path ? "" : "Pick a drive first";
-    $("#fdList").innerHTML = r.entries.length ? r.entries.map((e) => `<li><button type="button" data-fd="${esc(e.path)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>${esc(e.name)}</button></li>`).join("") : '<li class="none">No folders in here.</li>';
+    $("#fdList").innerHTML = r.entries.length ? r.entries.map((e) => `<li><button type="button" data-fd="${esc(e.path)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>${esc(e.name)}</button></li>`).join("") : '<li class="none">No folders in here</li>';
   } catch (e) { toast(e.message || "Could not open that folder", true); }
 }
 async function openFolderDialog(start, onPick) {

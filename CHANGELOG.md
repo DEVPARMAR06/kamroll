@@ -9,4 +9,5 @@ First public version.
 - Review screen with tags and reasons; Health screen (compare phone and SSD, re-read every file, repair queue).
 - Optional smart tags through a local Ollama.
 - Old-folder tools: compare, import, adopt, consolidate, relocate.
-- Rust engine (about 8 MB) with a command line; Windows installer and macOS app built by CI.
+- Rust engine built into the app (no web server, no network port) with a command line; Windows installer and macOS app built by CI.
+- Settings in one file per computer, shown in Setup.

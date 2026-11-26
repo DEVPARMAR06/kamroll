@@ -30,31 +30,10 @@ jobs:
           targets: aarch64-apple-darwin,x86_64-apple-darwin
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: |
-            engine
-            desktop/src-tauri
+          workspaces: desktop/src-tauri
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-
-      - name: Build the engine (Windows)
-        if: matrix.name == 'windows'
-        shell: bash
-        run: |
-          (cd engine && cargo build --release)
-          mkdir -p desktop/engine-dist/kamroll-engine
-          cp engine/target/release/kamroll-engine.exe desktop/engine-dist/kamroll-engine/
-
-      - name: Build the engine (macOS, Apple silicon and Intel in one file)
-        if: matrix.name == 'macos'
-        shell: bash
-        run: |
-          (cd engine && cargo build --release --target aarch64-apple-darwin && cargo build --release --target x86_64-apple-darwin)
-          mkdir -p desktop/engine-dist/kamroll-engine
-          lipo -create -output desktop/engine-dist/kamroll-engine/kamroll-engine \
-            engine/target/aarch64-apple-darwin/release/kamroll-engine \
-            engine/target/x86_64-apple-darwin/release/kamroll-engine
-          chmod +x desktop/engine-dist/kamroll-engine/kamroll-engine
 
       - name: Build the app
         working-directory: desktop

@@ -9,7 +9,7 @@ Back up your iPhone's photos and videos to an external SSD at **original quality
 - **Proves it matches.** A Health screen compares the phone with the SSD and can re-read every file to catch silent damage. Problems can be queued to be copied again.
 - **Organised by when and where.** Dates come from the photo or video itself. Trips come from GPS, with offline place names. You can rename, add to, take from, create and delete trips, and optionally file each trip into `Trips/<year>/<name> (<month year>)/`. Find trips again after a backup: a trip you have named keeps its name, picks up new photos from its days, and absorbs later photos from the same place (within 14 days and 50 km) instead of showing a second trip; a visit weeks later stays its own trip.
 - **Tags, no cloud.** Simple rules tag memories, trips, screenshots, chat images, duplicates and junk, with the reasons shown. An optional local [Ollama](https://ollama.com) model can suggest trip titles, and describe pictures if you give it a vision model.
-- **Private.** Nothing leaves your computer and there is no telemetry. The engine listens on `127.0.0.1` only, behind a per-launch token.
+- **Private.** Nothing leaves your computer and there is no telemetry. The app has no web server and opens no network port: the engine runs inside the app.
 - **Small.** The whole app is a few megabytes. The engine is written in Rust.
 
 ## Install
@@ -26,32 +26,28 @@ Format the SSD **exFAT** to use it on both. Plug in the iPhone, unlock it and ta
 You need [Rust](https://rustup.rs) (stable), Node 22, and on Windows the Visual Studio C++ build tools.
 
 ```powershell
-cd engine
-cargo build --release                       # the engine: kamroll-engine
-cd ..
-mkdir desktop\engine-dist\kamroll-engine
-copy engine\target\release\kamroll-engine.exe desktop\engine-dist\kamroll-engine\
 cd desktop
 npm install
 npm run build:win                           # or build:mac on a Mac
 ```
 
-To work on it, run the engine and open the app in a browser, or run the desktop window:
+That one build compiles the engine into the app. To work on it, run `npm run dev` in `desktop/` for the app window. For quick UI work the engine can also serve the screens to a browser, on this computer only; that development server is left out of the app:
 
 ```powershell
-cd engine; cargo run -- ui --port 8765      # http://127.0.0.1:8765/ (the access token is printed in the page source)
-cd desktop; npm run dev                     # the desktop window, using engine\target\debug\kamroll-engine
+cd engine; cargo run -- ui --port 8765
 ```
 
-The engine also has a command line: `kamroll-engine run | scan | status | verify | sync | adopt | consolidate | import-old | relocate-old | compare-old`. Settings live in `config.toml` (copy `config.example.toml`) or in the Setup screen, and every path and folder name is configurable.
+The engine also has a command line: `kamroll-engine run | scan | status | verify | sync | adopt | consolidate | import-old | relocate-old | compare-old`. Every path and folder name is configurable in the Setup screen.
+
+**Where settings are kept:** one file, `%APPDATA%\kamroll\config.toml` on Windows and `~/Library/Application Support/kamroll/config.toml` on a Mac (Setup shows the full path). The command line can use another file with `-c`. Your backup's records live on the SSD, in its `.photovault` folder.
 
 ## How it is organised
 
 | Folder | What it is |
 |---|---|
-| `engine/` | The Rust engine: iPhone link (USB, pairing, file service), crash-safe copier, manifest, tagging, trips, filing, thumbnails, smart tags, command line, and the local API. |
+| `engine/` | The Rust engine: iPhone link (USB, pairing, file service), crash-safe copier, manifest, tagging, trips, filing, thumbnails, smart tags, command line, and the API the screens use. |
 | `ui/` | The app's screens: plain HTML, CSS and JavaScript, no build step. Talks only to the engine's API (`docs/engine-openapi.json`). |
-| `desktop/` | The [Tauri](https://tauri.app) window that starts the engine and shows the UI. |
+| `desktop/` | The [Tauri](https://tauri.app) app: the engine and its window in one program. |
 | `reference/` | The original Python engine. It is no longer shipped; the tests run the same sessions on it and on the Rust engine and require identical results. |
 | `tests/` | Contract tests (Python engine vs Rust engine) and Python engine tests. |
 

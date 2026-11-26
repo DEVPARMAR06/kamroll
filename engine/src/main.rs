@@ -1,33 +1,6 @@
-//! The Kamroll engine.
-//!
-//! It serves the same UI and the same API as the Python engine (see docs/engine-openapi.json) and has the same
-//! command line: backup, sync, verify, adopt, import and compare old folders.
-mod adopt;
-mod afc;
-mod ai;
-mod analysis;
-mod app;
-mod backup;
-mod cli;
-mod config;
-mod copier;
-mod device;
-mod edits;
-mod filing;
-mod layout;
-mod legacy;
-mod manifest;
-mod metadata;
-mod schema;
-mod system;
-mod tagging;
-mod thumbs;
-mod trips;
-mod verify;
-
+//! The Kamroll command line: back up, sync, verify, adopt, import and compare old folders.
 use clap::{Parser, Subcommand};
-use std::collections::hash_map::RandomState;
-use std::hash::{BuildHasher, Hasher};
+use kamroll_engine::CommandArgs;
 
 #[derive(Parser)]
 #[command(name = "kamroll-engine", about = "Kamroll: back up an iPhone to an SSD at original quality (the app's engine and the command line)")]
@@ -41,7 +14,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Cmd {
-    /// Serve the app and its API on 127.0.0.1
+    /// Development only: serve the app and its API on 127.0.0.1 (the desktop app does not use this)
+    #[cfg(feature = "web")]
     Ui {
         #[arg(long, default_value_t = 8765)]
         port: u16,
@@ -94,42 +68,32 @@ enum Cmd {
     Sync,
 }
 
-fn random_token() -> String {
-    (0..3).map(|_| format!("{:016x}", RandomState::new().build_hasher().finish())).collect()
-}
-
 fn main() {
     let Cli { config, cmd } = Cli::parse();
     if let Some(c) = config {
         std::env::set_var("PHOTOVAULT_CONFIG", c);
     }
-    let blank = |cmd: &str| cli::Args { cmd: cmd.into(), path: None, limit: None, deep: false, dry_run: false, only_reencoded: false, out: None };
+    kamroll_engine::migrate_settings();
+    let blank = |cmd: &str| CommandArgs { cmd: cmd.into(), path: None, limit: None, deep: false, dry_run: false, only_reencoded: false, out: None };
     let args = match cmd {
+        #[cfg(feature = "web")]
         Cmd::Ui { port, token, .. } => {
-            let rt = tokio::runtime::Builder::new_multi_thread().enable_all().build().expect("runtime");
-            let r: anyhow::Result<()> = rt.block_on(async move {
-                let token = token.unwrap_or_else(random_token);
-                let listener = tokio::net::TcpListener::bind(("127.0.0.1", port)).await?;
-                println!("photovault Rust engine: http://127.0.0.1:{port}/  (Ctrl+C to stop)");
-                axum::serve(listener, app::router(token)).await?;
-                Ok(())
-            });
-            if let Err(e) = r {
+            if let Err(e) = kamroll_engine::serve_web(port, token) {
                 eprintln!("{e}");
                 std::process::exit(1);
             }
             return;
         }
-        Cmd::Run { dry_run, limit, only_reencoded_originals } => cli::Args { dry_run, limit, only_reencoded: only_reencoded_originals, ..blank("run") },
-        Cmd::Consolidate { limit } => cli::Args { limit, ..blank("consolidate") },
+        Cmd::Run { dry_run, limit, only_reencoded_originals } => CommandArgs { dry_run, limit, only_reencoded: only_reencoded_originals, ..blank("run") },
+        Cmd::Consolidate { limit } => CommandArgs { limit, ..blank("consolidate") },
         Cmd::Scan => blank("scan"),
-        Cmd::Adopt { path } => cli::Args { path: Some(path), ..blank("adopt") },
+        Cmd::Adopt { path } => CommandArgs { path: Some(path), ..blank("adopt") },
         Cmd::Status => blank("status"),
-        Cmd::Verify { deep } => cli::Args { deep, ..blank("verify") },
+        Cmd::Verify { deep } => CommandArgs { deep, ..blank("verify") },
         Cmd::RelocateOld => blank("relocate-old"),
-        Cmd::ImportOld { path, limit } => cli::Args { path: Some(path), limit, ..blank("import-old") },
-        Cmd::CompareOld { path, out } => cli::Args { path: Some(path), out, ..blank("compare-old") },
+        Cmd::ImportOld { path, limit } => CommandArgs { path: Some(path), limit, ..blank("import-old") },
+        Cmd::CompareOld { path, out } => CommandArgs { path: Some(path), out, ..blank("compare-old") },
         Cmd::Sync => blank("sync"),
     };
-    std::process::exit(cli::run(args));
+    std::process::exit(kamroll_engine::run_command(args));
 }

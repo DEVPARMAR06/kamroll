@@ -19,6 +19,8 @@ const NOT_PORTED: &str = "This part of the engine has not been ported to Rust ye
 
 pub struct AppState {
     pub token: String,
+    /// Inside the desktop app: no network, so there is no host to check and no event stream.
+    pub embedded: bool,
     pub health: verify::Shared,
     pub org: filing::SharedOrg,
     pub analysis: analysis::Shared,
@@ -39,7 +41,7 @@ fn same(a: &str, b: &str) -> bool {
 /// Only this computer, and only with the per-launch token: blocks other web pages and DNS rebinding.
 async fn guard(State(st): St, req: Request, next: Next) -> Response {
     let host = req.headers().get(header::HOST).and_then(|h| h.to_str().ok()).unwrap_or("").split(':').next().unwrap_or("").to_string();
-    if !matches!(host.as_str(), "127.0.0.1" | "localhost" | "[::1]") {
+    if !st.embedded && !matches!(host.as_str(), "127.0.0.1" | "localhost" | "[::1]") {
         return detail(403, "Forbidden host");
     }
     if req.uri().path().starts_with("/api") {
@@ -511,6 +513,9 @@ async fn backup_cancel(State(st): St) -> Response {
 
 /// Server-sent events: a full snapshot whenever something changes, and at least once a second.
 async fn backup_events(State(st): St) -> Response {
+    if st.embedded {
+        return StatusCode::NO_CONTENT.into_response(); // the app asks for the state instead
+    }
     let (tx, rx) = tokio::sync::mpsc::channel::<Result<axum::body::Bytes, std::convert::Infallible>>(8);
     let st2 = st.clone();
     tokio::spawn(async move {
@@ -637,8 +642,8 @@ async fn index(State(st): St) -> Response {
     r
 }
 
-pub fn router(token: String) -> Router {
-    let state = Arc::new(AppState { token, health: Default::default(), org: Default::default(), analysis: Default::default(), backup: Default::default(), ai: Default::default() });
+pub fn router(token: String, embedded: bool) -> Router {
+    let state = Arc::new(AppState { token, embedded, health: Default::default(), org: Default::default(), analysis: Default::default(), backup: Default::default(), ai: Default::default() });
     Router::new()
         .route("/", get(index))
         .route("/static/{*path}", get(static_file))

@@ -6,7 +6,8 @@ Please report security problems privately, not in a public issue: use GitHub's *
 
 ## What Kamroll protects
 
-- The engine listens on `127.0.0.1` only, checks the `Host` header, and requires a random per-launch token on every `/api` call.
+- The app opens no network port. Its screens load through a private scheme answered inside the app, and every `/api` call still needs a random per-launch token.
+- The development server (`kamroll-engine ui`, not part of the app) listens on `127.0.0.1` only, checks the `Host` header and needs the token.
 - It reads the iPhone through Apple's USB service using the pairing record Apple already stored on your computer. It never writes to the phone.
 - It makes no network connections other than to an Ollama server on `127.0.0.1` if you turn smart tags on. There is no telemetry.
 - Files are only ever renamed inside the backup folder, never deleted. Damaged files are moved to `.photovault/quarantine`.
