@@ -41,6 +41,17 @@ jobs:
           npm install
           npm run ${{ matrix.script }}
 
+      - name: Build the Microsoft Store package
+        if: matrix.name == 'windows'
+        shell: pwsh
+        run: scripts/build-msix.ps1
+
+      - uses: actions/upload-artifact@v7
+        if: matrix.name == 'windows'
+        with:
+          name: kamroll-store
+          path: dist-store/*.msix
+
       - name: Collect the installer
         shell: bash
         run: |

@@ -12,3 +12,4 @@ desktop/src-tauri/gen/
 docs/reports/
 spike_afc.py
 engine/target/
+dist-store/

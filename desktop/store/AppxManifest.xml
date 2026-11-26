@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Microsoft Store package of Kamroll. The Identity values come from Partner Center (Product identity) and must
+     match it exactly. scripts/build-msix.ps1 fills in the version. -->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap rescap">
+
+  <Identity
+    Name="DevParmar.Kamroll"
+    Publisher="CN=BDEB6878-0BE1-4E36-85A8-65D494EA8A6C"
+    Version="$VERSION$"
+    ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>Kamroll</DisplayName>
+    <PublisherDisplayName>Dev Parmar</PublisherDisplayName>
+    <Description>Back up iPhone photos and videos to an external drive at original quality.</Description>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-us" />
+  </Resources>
+
+  <Applications>
+    <Application Id="Kamroll" Executable="kamroll.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="Kamroll"
+        Description="Back up iPhone photos and videos to an external drive at original quality."
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile
+          Wide310x150Logo="Assets\Wide310x150Logo.png"
+          Square71x71Logo="Assets\Square71x71Logo.png"
+          Square310x310Logo="Assets\Square310x310Logo.png" />
+      </uap:VisualElements>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <!-- A desktop program: it talks to Apple's USB service and writes to the drive the person chooses. -->
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>

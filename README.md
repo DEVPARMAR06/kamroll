@@ -4,6 +4,8 @@ Back up your iPhone's photos and videos to an external SSD at **original quality
 
 > Kamroll is an independent open-source project. It is not affiliated with or endorsed by Apple. "iPhone" is a trademark of Apple Inc.
 
+![Kamroll's Trips screen, showing trips found from the location saved in photos](docs/store/screenshot-2-trips.png)
+
 - **Originals, untouched.** Files are copied byte for byte over USB. No conversion, so EXIF and GPS, Live Photo clips and `.AAE` edit files all survive. The iPhone is only ever read.
 - **Fault tolerant.** Each file is written to a temporary file, checked, then renamed into place. Pull the cable or the power and the next run resumes where it stopped. Every copy has a SHA-256 fingerprint you can re-check.
 - **Proves it matches.** A Health screen compares the phone with the SSD and can re-read every file to catch silent damage. Problems can be queued to be copied again.
@@ -70,4 +72,4 @@ Checked on a real iPhone 15 Pro: a full backup of a library of more than 20,000 
 
 ## Contributing, security, licence
 
-See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md) and [docs/PUBLISHING.md](docs/PUBLISHING.md). Kamroll is [MIT licensed](LICENSE); third-party notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Back up at your own risk: Kamroll only reads the phone and never deletes anything, but keep a second copy of anything you cannot replace.
+See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md) and [docs/PUBLISHING.md](docs/PUBLISHING.md). Privacy: [PRIVACY.md](PRIVACY.md). Kamroll is [MIT licensed](LICENSE); third-party notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Back up at your own risk: Kamroll only reads the phone and never deletes anything, but keep a second copy of anything you cannot replace.

@@ -32,6 +32,10 @@ So a behaviour change goes in both engines, with a test that shows the same resu
 - UI changes: keep it plain HTML, CSS and JavaScript (no build step), keep light and dark themes working, and keep every screen usable with the keyboard.
 - Photos are people's memories. Be careful with anything that moves, renames or overwrites a file, and make it recoverable.
 
+## The app icon
+
+After changing `desktop/app-icon.png`, run `npm run icons` in `desktop/` and `python scripts/make-store-assets.py`.
+
 ## Reporting a security problem
 
 Do not open a public issue. See [SECURITY.md](SECURITY.md).
