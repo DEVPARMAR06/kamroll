@@ -81,7 +81,7 @@ const NAV_GROUPS = { setup: "Backup", review: "Library", health: "Maintenance" }
 function renderNav() {
   $("#nav").innerHTML = Object.entries(PAGES).map(([id, p]) => `${NAV_GROUPS[id] ? `<div class="nav-group">${NAV_GROUPS[id]}</div>` : ""}
     <button class="nav-item" data-nav="${id}" ${id === S.page ? 'aria-current="page"' : ""}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p.icon}</svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p.icon}</svg>
       <span>${p.label}</span>${p.soon ? '<span class="soon">Soon</span>' : ""}${id === "backup" ? '<span class="live" id="navLive" hidden></span>' : ""}
     </button>`).join("");
 }
@@ -134,12 +134,12 @@ function renderSetup() {
     <div class="card-head"><h2 id="h-dest">Backup location</h2><p>Pick the drive that holds your backup. The folder name below is created on it if it does not exist.</p></div>
     <div class="rows">
       <div class="row full"><div class="ctrl"><div class="vols" id="vols" role="radiogroup" aria-label="Drive"></div>
-        <div class="inline"><button class="btn small" type="button" id="browse">Choose another folder…</button><span class="faint" style="font-size:13px">for a drive that is not listed</span></div>
+        <div class="inline"><button class="btn small" type="button" id="browse">Choose another folder…</button><span class="faint note">for a drive that is not listed</span></div>
         <div class="err" data-err="ssd_root" hidden></div></div></div>
       <div class="row"><div><div class="lab"><label for="f-backup_dir">Folder name</label></div><div class="help">Created inside the location above. You can use any name, or a full path.</div></div>
         <div class="ctrl"><input class="input" id="f-backup_dir" data-field="backup_dir" value="${esc(c.backup_dir)}" spellcheck="false" autocomplete="off">
           <div class="err" data-err="backup_dir" hidden></div>
-          <div class="dest"><div class="faint" style="font-size:12.5px;margin-bottom:3px">Photos will be saved to</div><code id="destText"></code><div class="chips" id="destChips" style="margin-top:10px"></div></div></div></div>
+          <div class="dest"><div class="faint note mb1">Photos will be saved to</div><code id="destText"></code><div class="chips mt2" id="destChips"></div></div></div></div>
     </div>
   </section>
 
@@ -179,7 +179,7 @@ function renderSetup() {
   </section>
 
   <section class="card" aria-labelledby="h-ai">
-    <div class="card-head"><h2 id="h-ai">Smart tags <span class="tag" style="margin-left:8px;vertical-align:2px">Optional</span></h2><p>Use an AI model running on this computer through Ollama to suggest tags and trip names. Nothing leaves your machine, and the app works the same without it.</p></div>
+    <div class="card-head"><h2 id="h-ai">Smart tags <span class="tag optional">Optional</span></h2><p>Use an AI model running on this computer through Ollama to suggest tags and trip names. Nothing leaves your machine, and the app works the same without it.</p></div>
     <div class="rows">
       <div class="row full"><div class="switch"><div><div class="lab" id="l-ai">Use Ollama for suggestions</div><div class="help">Rules run first. The model only looks at photos the rules are unsure about.</div></div>
         <button class="sw" role="switch" type="button" data-toggle="ai_enabled" aria-labelledby="l-ai" aria-checked="${c.ai_enabled}"></button></div></div>
@@ -217,7 +217,7 @@ function setSwitchLabel(b) { b.title = b.getAttribute("aria-checked") === "true"
 function renderDevice() {
   const el = $("#deviceCard"); if (!el) return;
   const d = S.device;
-  if (!d) { el.innerHTML = '<div class="device"><span class="phone off"></span><div class="t"><h3>Looking for your iPhone</h3><div class="skeleton" style="width:55%;margin-top:8px"></div></div></div>'; return; }
+  if (!d) { el.innerHTML = '<div class="device"><span class="phone off"></span><div class="t"><h3>Looking for your iPhone</h3><div class="skeleton sk-line"></div></div></div>'; return; }
   el.innerHTML = d.connected
     ? `<div class="device"><span class="phone"></span><div class="t"><h3>${esc(d.name)}</h3><p>${esc(d.model || "iPhone")} · iOS ${esc(d.ios)}</p></div><span class="pill ok"><i></i>Connected</span><button class="btn" type="button" id="recheck">Check again</button></div>`
     : `<div class="device"><span class="phone off"></span><div class="t"><h3>No iPhone connected</h3><p>${esc(d.hint || "")}</p></div><span class="pill warn"><i></i>Not found</span><button class="btn" type="button" id="recheck">Check again</button></div>`;
@@ -254,7 +254,7 @@ function renderAi() {
   else {
     const vision = o.models.filter((m) => m.vision);
     const opts = o.models.map((m) => `<option value="${esc(m.name)}" ${m.name === S.cfg.ai_model ? "selected" : ""}>${esc(m.name)} · ${m.gb} GB${m.vision ? " · can see images" : ""}</option>`).join("");
-    body = `<div class="row"><div><div class="lab"><label for="f-ai_model">Model</label></div><div class="help">${vision.length ? "Models marked can see images are guessed from their names." : "None of your models can see images, so tags come from rules and file details only. A text model can still name trips."}</div></div>
+    body = `<div class="row"><div><div class="lab"><label for="f-ai_model">Model</label></div><div class="help">${vision.length ? "Models marked can see images are guessed from their names" : "None of your models can see images, so tags come from rules and file details only. A text model can still name trips."}</div></div>
       <div class="ctrl"><span class="pill ok" style="align-self:flex-start"><i></i>Ollama running · ${o.models.length} model${o.models.length === 1 ? "" : "s"}</span>
       <select class="select" id="f-ai_model" data-field="ai_model"><option value="">Choose a model…</option>${opts}</select>${aiHost()}</div></div>`;
   }
@@ -327,12 +327,12 @@ async function loadOllama() {
   if (!S.cfg?.ai_enabled) return;
   S.ollama = null; renderAi();
   try { S.ollama = await api("/api/ollama?host=" + encodeURIComponent(S.cfg.ai_host)); }
-  catch (e) { S.ollama = { reachable: false, models: [], error: "Could not check Ollama." }; }
+  catch (e) { S.ollama = { reachable: false, models: [], error: "Could not check Ollama" }; }
   renderAi(); showErrors();
 }
 async function loadDevice() {
   S.device = null; renderDevice(); renderConn();
-  try { S.device = await api("/api/device"); } catch (e) { S.device = { connected: false, hint: "The app engine did not respond." }; }
+  try { S.device = await api("/api/device"); } catch (e) { S.device = { connected: false, hint: "The app engine did not respond" }; }
   renderDevice(); renderConn();
   if (S.page === "backup" && !isActive()) renderBackup();
   if (S.page === "health" && H.state && H.state.job.state !== "running") renderHealth(false);
@@ -359,11 +359,11 @@ function waiting() {
 function preflight() {
   const out = [], w = waiting(), pc = S.pathCheck;
   const d = S.device;
-  out.push(d ? (d.connected ? { ok: true, label: "iPhone connected", detail: `${d.name} · ${d.model || "iPhone"}` } : { ok: false, label: "iPhone not found", detail: d.hint || "Plug it in and unlock it." }) : { ok: null, label: "Looking for the iPhone…", detail: "" });
-  out.push(!S.cfgExists ? { ok: false, label: "Settings not saved yet", detail: "Open Setup, check the options and save." } : dirty() ? { ok: false, label: "Unsaved changes in Setup", detail: "Save or discard them so the backup uses what you see." } : { ok: true, label: "Settings saved", detail: "" });
+  out.push(d ? (d.connected ? { ok: true, label: "iPhone connected", detail: `${d.name} · ${d.model || "iPhone"}` } : { ok: false, label: "iPhone not found", detail: d.hint || "Plug it in and unlock it" }) : { ok: null, label: "Looking for the iPhone…", detail: "" });
+  out.push(!S.cfgExists ? { ok: false, label: "Settings not saved yet", detail: "Open Setup, check the options and save" } : dirty() ? { ok: false, label: "Unsaved changes in Setup", detail: "Save or discard them so the backup uses what you see" } : { ok: true, label: "Settings saved", detail: "" });
   const here = pc && pc.path.toLowerCase().replace(/\\/g, "/") === destPath().toLowerCase().replace(/\\/g, "/");
   if (!here) out.push({ ok: null, label: "Checking the backup location…", detail: "" });
-  else if (pc.volume_missing) out.push({ ok: false, label: "Backup drive not found", detail: "Connect the SSD and check again." });
+  else if (pc.volume_missing) out.push({ ok: false, label: "Backup drive not found", detail: "Connect the SSD and check again" });
   else if (!pc.writable) out.push({ ok: false, label: "Cannot write to the backup location", detail: destPath() });
   else out.push({ ok: true, label: "Backup location ready", detail: destPath() });
   if (here && pc.free != null && !S.status?.has_backup) out.push({ ok: true, label: "Space", detail: `${fmtBytes(pc.free)} free. The size of your photo library is checked as copying starts.` });
@@ -397,7 +397,7 @@ function summaryCard() {
     <div class="stat"><div class="v num">${fmtNum(done.files)}</div><div class="l">backed up · ${fmtBytes(done.bytes)}</div></div>
     <div class="stat"><div class="v num">${fmtNum(wait.files - failed.files)}</div><div class="l">waiting on the phone · ${fmtBytes(wb)}</div></div>
     <div class="stat"><div class="v num">${fmtNum(failed.files)}</div><div class="l">failed${skipped.files ? ` · ${fmtNum(skipped.files)} skipped by choice` : ""}</div></div></div>
-    <div style="padding:0 22px 20px"><div class="bar" role="img" aria-label="Share of data backed up"><i style="width:${w(done.bytes)};background:var(--ok)"></i><i style="width:${w(wb)};background:var(--line-strong)"></i><i style="width:${w(failed.bytes)};background:var(--bad)"></i></div></div></section>`;
+    <div class="pad-card"><div class="bar" role="img" aria-label="Share of data backed up"><i style="width:${w(done.bytes)};background:var(--ok)"></i><i style="width:${w(wb)};background:var(--line-strong)"></i><i style="width:${w(failed.bytes)};background:var(--bad)"></i></div></div></section>`;
 }
 
 function resultBanner() {
@@ -434,13 +434,13 @@ function readyView() {
 function runView() {
   return `<section class="card run"><div class="run-head"><div><span class="pill" id="jPill"><i></i><span></span></span><div class="run-msg" id="jMsg"></div></div><div class="run-btns" id="jBtns"></div></div>
     <div class="big"><div class="pct num" id="jPct"></div><div class="muted num" id="jBytes"></div></div>
-    <div class="bar big-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="jBarWrap"><i id="jBar" style="width:0%;background:var(--accent)"></i></div>
+    <div class="bar big-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="jBarWrap"><i id="jBar" style="width:0%"></i></div>
     <div class="stat-grid run-stats">
       <div class="stat"><div class="v num" id="jFiles"></div><div class="l">files</div></div>
       <div class="stat"><div class="v num" id="jSpeed"></div><div class="l">speed</div></div>
       <div class="stat"><div class="v num" id="jEta"></div><div class="l">time left</div></div>
       <div class="stat"><div class="v num" id="jElapsed"></div><div class="l">elapsed</div></div></div></section>
-  <section class="card" id="jCurCard"><div class="rows"><div class="row"><div><div class="lab">Now copying</div></div><div class="ctrl"><div id="jCur"></div><div class="bar" style="height:6px"><i id="jCurBar" style="width:0%;background:var(--ink);opacity:.7"></i></div></div></div></div></section>
+  <section class="card" id="jCurCard"><div class="rows"><div class="row"><div><div class="lab">Now copying</div></div><div class="ctrl"><div id="jCur"></div><div class="bar thin"><i id="jCurBar" style="width:0%;background:var(--ink);opacity:.7"></i></div></div></div></div></section>
   <section class="card"><div class="card-head"><h2>Activity</h2></div><ul class="log" id="jLog"></ul></section>`;
 }
 
@@ -554,12 +554,12 @@ function analyzeCard(title) {
   const a = R.analysis;
   if (a && a.state === "running") {
     const pct = a.total ? Math.round((a.done / a.total) * 100) : 0;
-    return `<div class="card empty"><h2>${esc(a.message || "Working")}</h2><div class="bar" style="width:min(360px,100%);height:10px"><i style="width:${pct}%;background:var(--accent)"></i></div><p class="num">${fmtNum(a.done)} of ${fmtNum(a.total)} files</p></div>`;
+    return `<div class="card empty"><h2>${esc(a.message || "Working")}</h2><div class="bar narrow"><i style="width:${pct}%"></i></div><p class="num">${fmtNum(a.done)} of ${fmtNum(a.total)} files</p></div>`;
   }
   const n = doneCount();
-  const err = a && a.state === "error" ? `<p style="color:var(--bad)">${esc(a.error)}</p>` : "";
+  const err = a && a.state === "error" ? `<p class="bad-text">${esc(a.error)}</p>` : "";
   return `<div class="card empty"><h2>${title}</h2><p>The app looks at each backed-up file on your SSD, on this computer only, and suggests what it is: a memory, a trip photo, a screenshot, a chat image, a duplicate or junk. Nothing is moved or deleted.</p>${err}
-    <button class="btn primary" type="button" id="analyzeBtn" ${n ? "" : "disabled"}>${n ? `Analyze ${fmtNum(n)} files` : "Nothing backed up yet"}</button></div>`;
+    <button class="btn primary" type="button" id="analyzeBtn" ${n ? "" : "disabled"}>${n ? `Analyse ${fmtNum(n)} files` : "Nothing backed up yet"}</button></div>`;
 }
 
 async function startAnalysis() {
@@ -592,7 +592,7 @@ async function renderReview(fresh = true) {
     .concat(TAGS.map((t) => `<button class="drawer" type="button" data-filter="${t.id}" aria-pressed="${R.filter === t.id || (t.id === "trip" && !!R.trip)}"><span class="g" style="color:var(${t.color})">${glyph(t.id)}</span><span><b>${t.label}</b><small>${t.hint}</small></span><span class="n num">${fmtNum(c[t.id] || 0)}</span></button>`)).join("");
   $("#page").innerHTML = `<div class="board">
     <aside class="rail" aria-label="Tags"><div class="bar tagbar" aria-hidden="true">${bar}</div><div id="drawers">${drawers}</div>
-      <div class="rail-foot muted">${s.analysis_at ? `Analyzed ${ago(s.analysis_at)}` : ""}${s.confirmed ? ` · ${fmtNum(s.confirmed)} confirmed by you` : ""}<br><button class="btn ghost small" type="button" id="analyzeBtn">Analyze again</button></div><div class="smartbox"></div></aside>
+      <div class="rail-foot muted">${s.analysis_at ? `Analysed ${ago(s.analysis_at)}` : ""}${s.confirmed ? ` · ${fmtNum(s.confirmed)} confirmed by you` : ""}<br><button class="btn ghost small" type="button" id="analyzeBtn">Analyse again</button></div><div class="smartbox"></div></aside>
     <section class="sheet"><div class="sheet-head"><div><button class="btn ghost small" type="button" id="tripsBack" hidden>All trips</button><h2 id="sheetTitle"></h2><p class="muted" id="sheetSub"></p></div><button class="btn small" type="button" id="confirmAll">Confirm all shown</button></div>
       ${groupedView() ? "" : `<div class="searchrow"><input class="input" id="q" type="search" placeholder="Search names and smart tags" value="${esc(R.q || "")}" aria-label="Search files" spellcheck="false"></div>`}<div class="grid" id="grid"></div><div class="more" id="more"></div></section>
     <aside class="loupe" id="loupe" aria-live="polite"></aside></div>`;
@@ -644,7 +644,7 @@ function paintGrid() {
   $("#sheetTitle").textContent = R.filter === "all" ? "All files" : TAG[R.filter].label;
   $("#sheetSub").textContent = `${fmtNum(R.total)} file${R.total === 1 ? "" : "s"}, least sure first`;
   $("#confirmAll").hidden = !R.items.length;
-  g.innerHTML = R.items.map((i) => tileHtml(i, false)).join("") || '<div class="muted" style="grid-column:1/-1;padding:30px 0">Nothing with this tag</div>';
+  g.innerHTML = R.items.map((i) => tileHtml(i, false)).join("") || '<div class="muted span-all pad-empty">Nothing with this tag</div>';
   $("#more").innerHTML = R.items.length < R.total ? `<button class="btn" type="button" id="moreBtn">Show more (${fmtNum(R.total - R.items.length)} left)</button>` : "";
 }
 
@@ -655,7 +655,7 @@ function paintTripGroups(g) {
   $("#confirmAll").hidden = true;
   g.className = "groups";
   g.innerHTML = R.groups.map(({ trip: t, items, total }) => `<section class="tgroup"><header class="tg-head"><div><h3>${esc(t.name || "Unnamed trip")}</h3><p class="muted num">${tripDates(t)} · ${fmtNum(total)} file${total === 1 ? "" : "s"} · up to ${fmtNum(t.max_km)} km from home</p></div><button class="btn small" type="button" data-tripview="${esc(t.id)}">Open trip</button></header>
-    <div class="grid compact">${items.map((i) => tileHtml(i, true)).join("")}</div>${total > items.length ? `<button class="more-link" type="button" data-tripview="${esc(t.id)}">+ ${fmtNum(total - items.length)} more from this trip</button>` : ""}</section>`).join("") || '<div class="muted" style="padding:30px 0">No trips yet</div>';
+    <div class="grid compact">${items.map((i) => tileHtml(i, true)).join("")}</div>${total > items.length ? `<button class="more-link" type="button" data-tripview="${esc(t.id)}">+ ${fmtNum(total - items.length)} more from this trip</button>` : ""}</section>`).join("") || '<div class="muted pad-empty">No trips yet</div>';
 }
 
 function paintOneTrip(g) {
@@ -667,7 +667,7 @@ function paintOneTrip(g) {
   const days = new Map();
   R.items.forEach((i) => { const k = i.taken ? new Date(i.taken * 1000).toLocaleDateString("en-CA") : "none"; (days.get(k) || days.set(k, []).get(k)).push(i); });
   g.innerHTML = [...days].map(([k, items]) => `<section class="tgroup"><header class="tg-head day"><h3>${k === "none" ? "No date" : new Date(k + "T00:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</h3><span class="muted num">${fmtNum(items.length)} file${items.length === 1 ? "" : "s"}</span></header>
-    <div class="grid compact">${items.map((i) => tileHtml(i, true)).join("")}</div></section>`).join("") || '<div class="muted" style="padding:30px 0">Nothing here</div>';
+    <div class="grid compact">${items.map((i) => tileHtml(i, true)).join("")}</div></section>`).join("") || '<div class="muted pad-empty">Nothing here</div>';
   $("#more").innerHTML = R.items.length < R.total ? `<button class="btn" type="button" id="moreBtn">Show more (${fmtNum(R.total - R.items.length)} left)</button>` : "";
 }
 
@@ -687,7 +687,7 @@ function paintLoupe() {
   const el = $("#loupe"); if (!el) return;
   if (R.picked.size > 1) {
     const items = R.items.filter((i) => R.picked.has(i.key));
-    el.innerHTML = `<div><div class="fname">${fmtNum(items.length)} files selected</div><p class="muted" style="font-size:13px;margin-top:2px">Ctrl or Cmd click adds one. Shift click selects a run.</p></div>
+    el.innerHTML = `<div><div class="fname">${fmtNum(items.length)} files selected</div><p class="muted note mt1">Ctrl or Cmd click adds one. Shift click selects a run.</p></div>
       <div class="strip sel">${items.filter((i) => i.has_thumb).slice(0, 8).map((i) => `<img alt="" src="${thumb(i.key, 160)}">`).join("")}</div>
       ${tripControls(items)}
       <div><h3>Tag them all</h3><div class="acts">${TAGS.map((x) => `<button class="btn" type="button" data-act="${x.id}" style="color:var(${x.color})">${glyph(x.id)}<span style="color:var(--ink)">${x.label}</span></button>`).join("")}</div></div>
@@ -698,9 +698,9 @@ function paintLoupe() {
   if (!it) { el.innerHTML = '<div class="muted">Pick a file to see why it was tagged</div>'; return; }
   const t = TAG[it.tag];
   el.innerHTML = `<div class="preview">${it.has_thumb ? `<img alt="" src="${thumb(it.key, 640)}">` : `<span class="ph big">${it.kind === "video" ? "Video" : esc(it.name.split(".").pop().toUpperCase())}<small>No preview</small></span>`}</div>
-    <div><div class="fname">${esc(it.name)}</div><div class="chips" style="margin-top:8px"><span class="pill" style="color:var(${t.color})">${glyph(it.tag)}<span style="color:var(--ink)">${it.confirmed ? "Confirmed" : "Suggested"}: ${t.label}</span></span></div></div>
+    <div><div class="fname">${esc(it.name)}</div><div class="chips mt2"><span class="pill" style="color:var(${t.color})">${glyph(it.tag)}<span style="color:var(--ink)">${it.confirmed ? "Confirmed" : "Suggested"}: ${t.label}</span></span></div></div>
     ${it.confirmed ? "" : `<div class="conf"><span class="num">${it.conf}% sure</span><i><b style="width:${it.conf}%"></b></i></div>`}
-    ${it.ai ? `<div><h3>Smart tags</h3><div class="chips">${it.ai.tags.map((x) => `<span class="chip">${esc(x)}</span>`).join("")}</div>${it.ai.caption ? `<p class="muted" style="font-size:13px;margin-top:6px">${esc(it.ai.caption)}</p>` : ""}${it.ai.kind && it.ai.kind !== "memory" && it.ai.kind !== it.tag ? `<p class="muted" style="font-size:13px;margin-top:4px">The model thinks this is ${it.ai.kind === "junk" ? "junk" : "a " + it.ai.kind}</p>` : ""}</div>` : ""}
+    ${it.ai ? `<div><h3>Smart tags</h3><div class="chips">${it.ai.tags.map((x) => `<span class="chip">${esc(x)}</span>`).join("")}</div>${it.ai.caption ? `<p class="muted note mt2">${esc(it.ai.caption)}</p>` : ""}${it.ai.kind && it.ai.kind !== "memory" && it.ai.kind !== it.tag ? `<p class="muted note mt1">The model thinks this is ${it.ai.kind === "junk" ? "junk" : "a " + it.ai.kind}</p>` : ""}</div>` : ""}
     <div><h3>Why this tag</h3><ul class="why">${it.reasons.map((r) => `<li>${esc(r)}</li>`).join("")}</ul></div>
     <dl><dt>Taken</dt><dd>${fmtDate(it.taken)}</dd>${it.trip_id ? `<dt>Trip</dt><dd>${esc(tripOf(it.trip_id)?.name || it.trip_id)}</dd>` : ""}<dt>Location</dt><dd>${it.gps ? "Saved in the file" : "None"}</dd><dt>Size</dt><dd>${fmtBytes(it.size)}</dd></dl>
     <div class="acts"><button class="btn primary wide2" type="button" data-act="confirm" ${it.confirmed && it.tag === it.suggested ? "disabled" : ""}>${glyph("check")}${it.confirmed ? "Confirmed" : "Confirm " + t.label}<kbd>Enter</kbd></button>
@@ -729,15 +729,15 @@ async function loadFiling() {
 function paintFiling() {
   const el = $(".filing"); if (!el) return;
   const p = O.preview, st = O.state, saved = !dirty();
-  if (st && st.state === "running") { const pc = st.total ? Math.round((st.done / st.total) * 100) : 0; el.innerHTML = `<section class="card"><div class="card-head"><h2>Filing trips into folders</h2><p>${esc(st.message)}</p></div><div style="padding:6px 22px 20px"><div class="bar" style="height:10px"><i style="width:${pc}%;background:var(--accent)"></i></div><div class="startbar" style="padding:12px 0 0;border:0"><span class="muted num">${fmtNum(st.done)} of ${fmtNum(st.total)} files</span><button class="btn" type="button" id="orgStop">Stop</button></div></div></section>`; return; }
-  const err = st && st.state === "error" ? `<p style="color:var(--bad);padding:0 22px">${esc(st.error)}</p>` : "";
-  const res = st && st.result && (st.state === "done" || st.state === "cancelled") ? `<p class="muted" style="padding:0 22px 6px">Last run: ${fmtNum(st.result.moved)} files moved${st.result.failed_count ? `, ${fmtNum(st.result.failed_count)} could not be moved` : ""}${st.result.stopped ? ", stopped early" : ""}. ${st.result.ssd_ok ? "Every file on the SSD is still in place." : "The SSD check found a problem. Open Health."}</p>` : "";
+  if (st && st.state === "running") { const pc = st.total ? Math.round((st.done / st.total) * 100) : 0; el.innerHTML = `<section class="card"><div class="card-head"><h2>Filing trips into folders</h2><p>${esc(st.message)}</p></div><div class="pad-card"><div class="bar"><i style="width:${pc}%"></i></div><div class="startbar flush"><span class="muted num">${fmtNum(st.done)} of ${fmtNum(st.total)} files</span><button class="btn" type="button" id="orgStop">Stop</button></div></div></section>`; return; }
+  const err = st && st.state === "error" ? `<p class="bad-text pad-x">${esc(st.error)}</p>` : "";
+  const res = st && st.result && (st.state === "done" || st.state === "cancelled") ? `<p class="muted pad-x">Last run: ${fmtNum(st.result.moved)} files moved${st.result.failed_count ? `, ${fmtNum(st.result.failed_count)} could not be moved` : ""}${st.result.stopped ? ", stopped early" : ""}. ${st.result.ssd_ok ? "Every file on the SSD is still in place" : "The SSD check found a problem. Open Health."}</p>` : "";
   if (!p || (!p.enabled && p.total === 0)) { el.innerHTML = `<section class="card"><div class="card-head"><h2>Filing trips into folders</h2><p>Off. Turn it on in Setup to keep each trip's photos together in one folder on the SSD, such as Trips/2025/Udaipur (Dec 2025).</p></div>${err}<div class="startbar"><span class="muted">Nothing on the SSD is moved until you apply it here</span><button class="btn" type="button" data-nav="setup">Open Setup</button></div></section>`; return; }
   const rows = p.samples.map((s) => `<li><span class="muted">${esc(s.name)}</span><code>${esc(s.from)}</code><span class="arrow">to</span><code>${esc(s.to)}</code></li>`).join("");
-  const headline = p.total === 0 ? "Every trip photo is already in its trip folder." : `${p.into ? `${fmtNum(p.into)} file${p.into === 1 ? "" : "s"} will move into trip folders` : ""}${p.into && p.back ? " and " : ""}${p.back ? `${fmtNum(p.back)} will go back to their dated folders` : ""}.`;
+  const headline = p.total === 0 ? "Every trip photo is already in its trip folder" : `${p.into ? `${fmtNum(p.into)} file${p.into === 1 ? "" : "s"} will move into trip folders` : ""}${p.into && p.back ? " and " : ""}${p.back ? `${fmtNum(p.back)} will go back to their dated folders` : ""}`;
   el.innerHTML = `<section class="card"><div class="card-head"><h2>Filing trips into folders</h2><p>${p.enabled ? "On." : "Off, so photos filed earlier will go back."} Files are renamed inside the SSD, never copied or deleted, and they can all be put back.</p></div>${err}${res}
     <div class="plan"><b>${headline}</b>${rows ? `<ul>${rows}</ul>${p.total > p.samples.length ? `<p class="muted">and ${fmtNum(p.total - p.samples.length)} more</p>` : ""}` : ""}</div>
-    <div class="startbar"><span class="muted">${saved ? "Uses the settings you saved." : "You have unsaved changes in Setup. Save them first."}</span><button class="btn primary" type="button" id="orgApply" ${p.total && saved ? "" : "disabled"}>${p.total ? "Apply" : "Nothing to do"}</button></div></section>`;
+    <div class="startbar"><span class="muted">${saved ? "Uses the settings you saved" : "You have unsaved changes in Setup. Save them first."}</span><button class="btn primary" type="button" id="orgApply" ${p.total && saved ? "" : "disabled"}>${p.total ? "Apply" : "Nothing to do"}</button></div></section>`;
 }
 async function pollFiling() {
   if (O.polling) return; O.polling = true;
@@ -757,8 +757,8 @@ function smartHtml() {
   const a = A.state; if (!a) return "";
   const j = a.job, running = j.state === "running";
   if (!a.ready) return `<div class="smart off"><b>Smart tags</b><p class="muted">Off. Turn them on in Setup to get trip titles and picture descriptions from a model on this computer.</p><button class="btn ghost small" type="button" data-nav="setup">Open Setup</button></div>`;
-  if (running) return `<div class="smart"><b>Smart tags</b><p class="muted">${esc(j.kind === "trips" ? "Naming trips" : "Describing pictures")}, ${fmtNum(j.done)} of ${fmtNum(j.total)}</p><div class="bar" style="height:6px"><i style="width:${j.total ? (j.done / j.total) * 100 : 0}%;background:var(--accent)"></i></div><button class="btn ghost small" type="button" id="aiStop">Stop</button></div>`;
-  const err = j.state === "error" ? `<p style="color:var(--bad);font-size:12.5px">${esc(j.error)}</p>` : "";
+  if (running) return `<div class="smart"><b>Smart tags</b><p class="muted">${esc(j.kind === "trips" ? "Naming trips" : "Describing pictures")}, ${fmtNum(j.done)} of ${fmtNum(j.total)}</p><div class="bar thin"><i style="width:${j.total ? (j.done / j.total) * 100 : 0}%"></i></div><button class="btn ghost small" type="button" id="aiStop">Stop</button></div>`;
+  const err = j.state === "error" ? `<p class="bad-text note">${esc(j.error)}</p>` : "";
   const photos = S.page === "review";
   return `<div class="smart"><b>Smart tags</b><p class="muted">${esc(a.model)} · ${fmtNum(a.done.photos)} pictures described, ${fmtNum(a.done.trips)} trips named</p>${err}
     ${photos ? '<button class="btn small" type="button" id="aiPhotos">Describe uncertain photos</button>' : '<button class="btn small" type="button" id="aiTrips">Suggest trip names</button>'}</div>`;
@@ -833,10 +833,10 @@ async function renderTrips(fresh = true) {
   if (!s) return;
   if (!s.analyzed || R.analysis?.state === "running") { $("#page").innerHTML = analyzeCard("Find your trips"); return; }
   const T = R.trips, list = T?.trips || [];
-  const newForm = `<div class="newtrip">${R.newTrip ? `<div class="nt-form"><label><span class="help">Name</span><input class="input" id="ntName" placeholder="For example, Train to Pune" spellcheck="false"></label><label><span class="help">First day</span><input class="input" id="ntStart" type="date"></label><label><span class="help">Last day</span><input class="input" id="ntEnd" type="date"></label><button class="btn primary" type="button" id="createTripBtn">Create trip</button><button class="btn ghost" type="button" id="newTripBtn">Cancel</button></div><p class="muted" style="font-size:13px;margin-top:8px">Every photo and video taken on those days joins the trip. Take any out afterwards from the Review screen.</p>` : `<div class="inline" style="gap:10px"><button class="btn" type="button" id="newTripBtn">New trip</button><button class="btn" type="button" id="analyzeBtn" title="Look at every backed-up file again and find trips again. Your names, tags and trip edits are kept.">Find trips again</button><span class="muted" style="font-size:12.5px">${s.analysis_at ? `Last analyzed ${ago(s.analysis_at)}` : ""}</span></div>`}</div>`;
+  const newForm = `<div class="newtrip">${R.newTrip ? `<div class="nt-form"><label><span class="help">Name</span><input class="input" id="ntName" placeholder="For example, Train to Pune" spellcheck="false"></label><label><span class="help">First day</span><input class="input" id="ntStart" type="date"></label><label><span class="help">Last day</span><input class="input" id="ntEnd" type="date"></label><button class="btn primary" type="button" id="createTripBtn">Create trip</button><button class="btn ghost" type="button" id="newTripBtn">Cancel</button></div><p class="muted note mt2">Every photo and video taken on those days joins the trip. Take any out afterwards from the Review screen.</p>` : `<div class="inline"><button class="btn" type="button" id="newTripBtn">New trip</button><button class="btn" type="button" id="analyzeBtn" title="Look at every backed-up file again and find trips again. Your names, tags and trip edits are kept.">Find trips again</button><span class="muted note">${s.analysis_at ? `Last analysed ${ago(s.analysis_at)}` : ""}</span></div>`}</div>`;
   const home = T?.home ? `${T.home[0].toFixed(2)}, ${T.home[1].toFixed(2)}` : null;
   const info = `<p class="muted">${home ? `Home is where most of your photos were taken (${home}). ` : ""}A trip is a run of days with photos more than ${T?.radius_km || 60} km away. Change this in Setup.</p>`;
-  if (!list.length) { $("#page").innerHTML = `${newForm}<div class="card empty"><h2>No trips found yet</h2><p>Trips come from the location saved in your photos. They will show up as more of your library is backed up.</p><button class="btn" type="button" id="analyzeBtn">Analyze again</button></div>${info}`; return; }
+  if (!list.length) { $("#page").innerHTML = `${newForm}<div class="card empty"><h2>No trips found yet</h2><p>Trips come from the location saved in your photos. They will show up as more of your library is backed up.</p><button class="btn" type="button" id="analyzeBtn">Analyse again</button></div>${info}`; return; }
   const a0 = Date.parse(list[0].start) - 20 * 864e5, a1 = Date.parse(list[list.length - 1].end) + 20 * 864e5, span = a1 - a0 || 1;
   const pos = (iso) => ((Date.parse(iso) - a0) / span) * 100;
   let months = ""; const d = new Date(a0); d.setDate(1); d.setMonth(d.getMonth() + 1);
@@ -853,7 +853,7 @@ function tripCard(t) {
   return `<article class="trip"><div class="trip-main"><div class="trip-name"><input class="input name" data-trip="${esc(t.id)}" value="${esc(t.name)}" placeholder="Name this trip" aria-label="Trip name" spellcheck="false"></div>
     <p class="muted num">${days} · ${t.days} day${t.days === 1 ? "" : "s"}</p><p class="muted num">${fmtNum(t.items)} files · up to ${fmtNum(t.max_km)} km from home</p>
     <div class="chips">${t.places.map((p) => `<span class="chip">${esc(p)}</span>`).join("")}</div>${t.ai && t.ai.title !== t.name ? `<div class="aisug"><span class="pill"><i></i>Suggested</span> <b>${esc(t.ai.title)}</b> <button class="btn small" type="button" data-useai="${esc(t.id)}" data-title="${esc(t.ai.title)}">Use this name</button>${t.ai.summary ? `<p class="muted">${esc(t.ai.summary)}</p>` : ""}</div>` : ""}</div>
-    <div class="strip">${strip}</div><div class="trip-actions"><button class="btn" type="button" data-tripview="${esc(t.id)}">Review files</button>${R.confirmDelete === t.id ? `<span class="muted" style="font-size:12.5px">Photos stay on the SSD</span><button class="btn danger small" type="button" data-del-trip="${esc(t.id)}">Yes, dissolve it</button><button class="btn ghost small" type="button" data-del-cancel="1">Keep</button>` : `<button class="btn ghost small" type="button" data-del-trip="${esc(t.id)}">Delete trip</button>`}</div></article>`;
+    <div class="strip">${strip}</div><div class="trip-actions"><button class="btn" type="button" data-tripview="${esc(t.id)}">Review files</button>${R.confirmDelete === t.id ? `<span class="muted note">Photos stay on the SSD</span><button class="btn danger small" type="button" data-del-trip="${esc(t.id)}">Yes, dissolve it</button><button class="btn ghost small" type="button" data-del-cancel="1">Keep</button>` : `<button class="btn ghost small" type="button" data-del-trip="${esc(t.id)}">Delete trip</button>`}</div></article>`;
 }
 
 function wide(on) { $("#page").classList.toggle("wide", on); $(".top").classList.toggle("wide", on); }
@@ -917,7 +917,7 @@ async function renderHealth(fresh = true) {
   const problems = [sync, deep].filter(Boolean).reduce((n, r) => n + r.missing.count + r.wrong_size.count + r.corrupt.count, 0);
   const waiting = sync ? sync.waiting : 0;
   let banner;
-  if (!sync && !deep) banner = ["", "Not checked yet", "Run a check below to see whether the SSD matches your iPhone."];
+  if (!sync && !deep) banner = ["", "Not checked yet", "Run a check below to see whether the SSD matches your iPhone"];
   else if (problems) banner = ["bad", `${fmtNum(problems)} file${problems === 1 ? "" : "s"} need attention`, "Files that were backed up are missing or damaged on the SSD. Details are below."];
   else if (waiting) banner = ["warn", `${fmtNum(waiting)} file${waiting === 1 ? "" : "s"} on the iPhone not backed up yet`, "Everything already on the SSD is fine. Run a backup to copy the rest."];
   else banner = ["ok", "Everything matches", "The SSD has every file from the iPhone, and the files that were checked are intact."];
@@ -928,7 +928,7 @@ async function renderHealth(fresh = true) {
 
   const runCard = running ? `<section class="card run"><div class="run-head"><div><span class="pill ok"><i></i>Running</span><div class="run-msg">${esc(job.message)}</div></div><div class="run-btns"><button class="btn" type="button" id="stopCheck">Stop</button></div></div>
     <div class="big"><div class="pct num">${job.total ? Math.round((job.done / job.total) * 100) + "%" : fmtNum(job.done)}</div><div class="muted num">${job.total ? `${fmtNum(job.done)} of ${fmtNum(job.total)} files` : "files read so far"}</div></div>
-    <div class="bar big-bar"><i style="width:${job.total ? (job.done / job.total) * 100 : 0}%;background:var(--accent)"></i></div></section>` : "";
+    <div class="bar big-bar"><i style="width:${job.total ? (job.done / job.total) * 100 : 0}%"></i></div></section>` : "";
   const stats = (pairs) => `<div class="mini">${pairs.map(([v, l]) => `<div><b class="num">${fmtNum(v)}</b><span>${l}</span></div>`).join("")}</div>`;
   const syncStats = sync ? stats([[sync.on_phone, "on the iPhone"], [sync.backed_up, "backed up"], [sync.waiting, "waiting"], [sync.only_on_ssd, "only on the SSD"]]) : "";
   const deepStats = deep ? stats([[deep.checked, "files re-read"], [deep.missing.count + deep.wrong_size.count + deep.corrupt.count, "problems"]]) : "";
@@ -936,9 +936,9 @@ async function renderHealth(fresh = true) {
 
   $("#page").innerHTML = `${err}<section class="banner ${banner[0]}"><div class="banner-body"><div class="banner-title">${esc(banner[1])}</div><p>${esc(banner[2])}${when ? ` <span class="faint">${esc(when)}</span>` : ""}</p></div></section>${runCard}
   <section class="card"><div class="card-head"><h2>Compare the iPhone with the SSD</h2><p>Lists what is on the phone right now and checks that each file is in the backup. Fast, and nothing is changed.</p></div>
-    ${syncStats}<div class="startbar"><div class="muted">${phoneOk ? "iPhone connected." : "Connect and unlock the iPhone first."}</div><button class="btn primary" type="button" id="runSync" ${dis} ${phoneOk ? "" : "disabled"}>Compare now</button></div></section>
+    ${syncStats}<div class="startbar"><div class="muted">${phoneOk ? "iPhone connected" : "Connect and unlock the iPhone first"}</div><button class="btn primary" type="button" id="runSync" ${dis} ${phoneOk ? "" : "disabled"}>Compare now</button></div></section>
   <section class="card"><div class="card-head"><h2>Verify every file on the SSD</h2><p>Reads each backed-up file again and compares it with the fingerprint saved when it was copied. This is the only way to catch silent damage, and it takes a while on a big library.</p></div>
-    ${deepStats}<div class="startbar"><div class="muted">${busyBackup ? "Wait for the running backup to finish." : "You can stop it at any time."}</div><button class="btn" type="button" id="runDeep" ${dis}>Verify files</button></div></section>
+    ${deepStats}<div class="startbar"><div class="muted">${busyBackup ? "Wait for the running backup to finish" : "You can stop it at any time"}</div><button class="btn" type="button" id="runDeep" ${dis}>Verify files</button></div></section>
   ${problemCard(sync, deep)}`;
   if (running) pollHealth();
 }
@@ -1003,7 +1003,7 @@ async function fdLoad(path) {
     $("#fdUp").disabled = r.parent == null;
     $("#fdPick").disabled = !r.path;
     $("#fdHint").textContent = r.path ? "" : "Pick a drive first";
-    $("#fdList").innerHTML = r.entries.length ? r.entries.map((e) => `<li><button type="button" data-fd="${esc(e.path)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>${esc(e.name)}</button></li>`).join("") : '<li class="none">No folders in here</li>';
+    $("#fdList").innerHTML = r.entries.length ? r.entries.map((e) => `<li><button type="button" data-fd="${esc(e.path)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>${esc(e.name)}</button></li>`).join("") : '<li class="none">No folders in here</li>';
   } catch (e) { toast(e.message || "Could not open that folder", true); }
 }
 async function openFolderDialog(start, onPick) {
@@ -1069,7 +1069,7 @@ $("#themeBtn").addEventListener("click", () => {
   document.documentElement.dataset.theme = next;
   try { localStorage.setItem("pv-theme", next); } catch (_) { /* storage unavailable */ }
 });
-$("#themeBtn").innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>';
+$("#themeBtn").innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>';
 window.addEventListener("hashchange", route);
 window.addEventListener("beforeunload", (e) => { if (dirty()) { e.preventDefault(); e.returnValue = ""; } });
 window.addEventListener("focus", () => { if (S.page === "setup" && S.device && !S.device.connected) loadDevice(); });
