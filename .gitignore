@@ -13,3 +13,4 @@ docs/reports/
 spike_afc.py
 engine/target/
 dist-store/
+docs/internal/

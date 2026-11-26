@@ -1,4 +1,4 @@
-"""Draw every icon the Microsoft Store package and listing need from desktop/app-icon.png.
+"""Draw every icon the Microsoft Store package needs from desktop/app-icon.png.
 
 Run after changing the app icon:  python scripts/make-store-assets.py   (needs Pillow)
 """
@@ -8,7 +8,7 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "desktop" / "store" / "Assets"
-LISTING = ROOT / "docs" / "store"
+LISTING = ROOT / "docs" / "internal" / "store"   # local only, not in the repository
 
 source = Image.open(ROOT / "desktop" / "app-icon.png").convert("RGBA")
 tight = source.crop(source.getbbox())          # the icon without the empty margin around it
